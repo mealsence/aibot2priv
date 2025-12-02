@@ -1,20 +1,14 @@
 from .config import (
     AnninAR4Config,
     PandaROSConfig,
-    PandaROSIsaacConfig,
-    PandaROSIsaacFastConfig,
-    PandaROSServoConfig,
-    PandaROSServoIsaacConfig,
+    PandaROSPositionConfig,
     ROS2Config,
     SO101ROSConfig,
 )
 from .robot import (
     AnninAR4,
     PandaROS,
-    PandaROSIsaac,
-    PandaROSIsaacFast,
-    PandaROSServo,
-    PandaROSServoIsaac,
+    PandaROSPosition,
     ROS2Robot,
     SO101ROS,
 )

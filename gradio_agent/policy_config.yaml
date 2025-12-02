@@ -1,0 +1,21 @@
+# VLA Policy Configuration
+# This file configures which policy to load for execute_vla_task
+
+# Policy path (can be HuggingFace Hub repo or local path)
+policy_path: "ases200q2/Isaac_panda_pick_cube_act_20251116_101319"
+
+# Policy type (act, smolvla, diffusion, etc.)
+policy_type: "act"
+
+# Device to use for inference (cuda, cpu, or null for auto-detect)
+device: "cuda"
+
+# Robot configuration for VLA tasks
+robot:
+  type: "panda_ros_position"  # panda_ros_position (fast), panda_ros (trajectory)
+  id: "my_panda_follower"
+
+# Execution parameters
+execution:
+  fps: 30  # Control loop frequency (Hz)
+  default_num_steps: 210  # Default number of steps (10s at 30 FPS)

@@ -60,22 +60,9 @@ class ROS2Robot(Robot):
 
     @cached_property
     def action_features(self) -> dict[str, type]:
-        if self.config.action_type == ActionType.CARTESIAN_VELOCITY:
-            return {
-                "linear_x.vel": float,
-                "linear_y.vel": float,
-                "linear_z.vel": float,
-                "angular_x.vel": float,
-                "angular_y.vel": float,
-                "angular_z.vel": float,
-                "gripper.pos": float,
-            }
-        elif self.config.action_type in (ActionType.JOINT_POSITION, ActionType.JOINT_TRAJECTORY):
-            return {f"{joint}.pos": float for joint in self.config.ros2_interface.arm_joint_names} | {
-                "gripper.pos": float
-            }
-        else:
-            raise ValueError(f"Unsupported action type: {self.config.action_type}")
+        return {f"{joint}.pos": float for joint in self.config.ros2_interface.arm_joint_names} | {
+            "gripper.pos": float
+        }
 
     @property
     def is_connected(self) -> bool:
@@ -140,7 +127,7 @@ class ROS2Robot(Robot):
         Thus, this function always returns the action actually sent.
 
         Args:
-            action (dict[str, float]): The goal positions for the motors or pressed_keys dict.
+            action (dict[str, float]): The goal positions for the motors.
 
         Raises:
             DeviceNotConnectedError: if robot is not connected.
@@ -151,38 +138,19 @@ class ROS2Robot(Robot):
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
-        if self.config.action_type == ActionType.CARTESIAN_VELOCITY:
-            if self.config.max_relative_target is not None:
-                # We don't have the current velocity of the arm, so set it to 0.0
-                # Effectively the goal velocity gets clipped by max_relative_target
-                goal_present_vel = {key: (act, 0.0) for key, act in action.items()}
-                action = ensure_safe_goal_position(goal_present_vel, self.config.max_relative_target)
+        if self.config.max_relative_target is not None:
+            goal_present_pos = {}
+            joint_state = self.ros2_interface.joint_state
+            if joint_state is None:
+                raise ValueError("Joint state is not available yet.")
 
-            linear_vel = (
-                action["linear_x.vel"],
-                action["linear_y.vel"],
-                action["linear_z.vel"],
-            )
-            angular_vel = (
-                action["angular_x.vel"],
-                action["angular_y.vel"],
-                action["angular_z.vel"],
-            )
-            self.ros2_interface.servo(linear=linear_vel, angular=angular_vel)
-        elif self.config.action_type in (ActionType.JOINT_POSITION, ActionType.JOINT_TRAJECTORY):
-            if self.config.max_relative_target is not None:
-                goal_present_pos = {}
-                joint_state = self.ros2_interface.joint_state
-                if joint_state is None:
-                    raise ValueError("Joint state is not available yet.")
+            for key, goal in action.items():
+                present_pos = joint_state["position"].get(key.replace(".pos", ""), 0.0)
+                goal_present_pos[key] = (goal, present_pos)
+            action = ensure_safe_goal_position(goal_present_pos, self.config.max_relative_target)
 
-                for key, goal in action.items():
-                    present_pos = joint_state["position"].get(key.replace(".pos", ""), 0.0)
-                    goal_present_pos[key] = (goal, present_pos)
-                action = ensure_safe_goal_position(goal_present_pos, self.config.max_relative_target)
-
-            joint_positions = [action[joint + ".pos"] for joint in self.config.ros2_interface.arm_joint_names]
-            self.ros2_interface.send_joint_position_command(joint_positions)
+        joint_positions = [action[joint + ".pos"] for joint in self.config.ros2_interface.arm_joint_names]
+        self.ros2_interface.send_joint_position_command(joint_positions)
 
         gripper_pos = action["gripper.pos"]
         self.ros2_interface.send_gripper_command(gripper_pos)
@@ -208,23 +176,10 @@ class AnninAR4(ROS2Robot):
 
 
 class PandaROS(ROS2Robot):
+    """Panda robot with ROS2 camera support and trajectory control."""
     pass
 
 
-class PandaROSIsaac(ROS2Robot):
-    """Panda robot with Isaac Sim camera support."""
-    pass
-
-
-class PandaROSIsaacFast(ROS2Robot):
-    """Panda robot with Isaac Sim camera support and fast direct position control."""
-    pass
-
-
-class PandaROSServo(ROS2Robot):
-    pass
-
-
-class PandaROSServoIsaac(ROS2Robot):
-    """Panda robot with MoveIt Servo and Isaac Sim camera support."""
+class PandaROSPosition(ROS2Robot):
+    """Panda robot with ROS2 camera support and fast direct position control."""
     pass

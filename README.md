@@ -2,15 +2,15 @@
 
 This repository provides a generic ROS 2 interface for the [LeRobot](https://github.com/huggingface/lerobot) framework. It acts as a lightweight wrapper to connect any [ros2_control](https://control.ros.org/rolling/index.html) or [MoveIt](https://moveit.ai/) compatible robot arm with the LeRobot ecosystem.
 
-A gamepad teleoperator for 6-DoF end-effector control and a keyboard teleoperator for joint position control is also provided.
+Designed to work with different simulations (Isaac Sim, Gazebo, etc.), different robots, and real robots.
 
 **Supported control modes:**
 
-- Joint position with ros2_control
-  - Using [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html)
-  - Using [position_controllers](https://control.ros.org/rolling/doc/ros2_controllers/position_controllers/doc/userdoc.html)
-- End-effector velocity with MoveIt 2
-  - Using [Moveit Servo](https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html)
+- Joint position control with ros2_control
+  - Using [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html) - smoother motion with trajectory interpolation
+  - Using [position_controllers](https://control.ros.org/rolling/doc/ros2_controllers/position_controllers/doc/userdoc.html) - ultra-low latency direct position control
+- End-effector control via IK (inverse kinematics)
+  - SpaceMouse and keyboard end-effector control with placo IK solver
 - Gripper control with ros2_control
   - Using [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html)
   - Using [Gripper Action Controller](https://control.ros.org/jazzy/doc/ros2_controllers/gripper_controllers/doc/userdoc.html)
@@ -85,7 +85,7 @@ This section describes how to integrate other ROS-based robots with Lerobot.
 
 Currently the repo supports the following arm control modes:
 
-**Option 1: Joint Position Control**
+**Option 1: Joint Position Control (Fast)**
 
 This option uses [position_controllers](https://control.ros.org/rolling/doc/ros2_controllers/position_controllers/doc/userdoc.html) in `ros2_control`. It requires the robot to have:
 
@@ -93,8 +93,9 @@ This option uses [position_controllers](https://control.ros.org/rolling/doc/ros2
 - `joint_state_broadcaster/JointStateBroadcaster` for joint state feedback
 
 This option is enabled by setting `action_type` to `ActionType.JOINT_POSITION` in robot config.
+Ultra-low latency (~15-20ms) for responsive teleoperation.
 
-**Option 2: Joint Trajectory Control**
+**Option 2: Joint Trajectory Control (Smooth)**
 
 This option uses [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html) in `ros2_control`. It requires the robot to have:
 
@@ -102,16 +103,7 @@ This option uses [joint_trajectory_controller](https://control.ros.org/rolling/d
 - `joint_state_broadcaster/JointStateBroadcaster` for joint state feedback
 
 This option is enabled by setting `action_type` to `ActionType.JOINT_TRAJECTORY` in robot config.
-
-**Option 3: End-Effector Control**
-
-This option uses [Moveit Servo](https://moveit.picknik.ai/main/doc/examples/realtime_servo/realtime_servo_tutorial.html) in MoveIt. It requires the robot to have:
-
-- The `moveit_servo` node for real-time end-effector control
-- `joint_trajectory_controller/JointTrajectoryController` for robot arm control
-- `joint_state_broadcaster/JointStateBroadcaster` for joint state feedback
-
-This option is enabled by setting `action_type` to `ActionType.CARTESIAN_VELOCITY` in robot config. See: [ar4_ros_driver](https://github.com/ycheng517/ar4_ros_driver) for an example of using `moveit_servo`.
+Smoother motion with trajectory interpolation.
 
 ### Gripper Control Modes
 
@@ -151,7 +143,7 @@ from lerobot.common.robots.config import ROS2Config, ROS2InterfaceConfig
 @RobotConfig.register_subclass("my_ros2_robot")
 @dataclass
 class MyRobotConfig(ROS2Config):
-    action_type: ActionType = ActionType.JOINT_POSITION
+    action_type: ActionType = ActionType.JOINT_TRAJECTORY  # or JOINT_POSITION for faster control
 
     ros2_interface: ROS2InterfaceConfig = field(
         default_factory=lambda: ROS2InterfaceConfig(
@@ -167,8 +159,8 @@ class MyRobotConfig(ROS2Config):
             gripper_joint_name="gripper_joint",
             gripper_open_position=0.0,
             gripper_close_position=1.0,
-            max_linear_velocity=0.05,  # m/s
-            max_angular_velocity=0.25,  # rad/s
+            min_joint_positions=[-3.14, -3.14, -3.14, -3.14, -3.14, -3.14],  # Optional: joint limits
+            max_joint_positions=[3.14, 3.14, 3.14, 3.14, 3.14, 3.14],
         )
     )
 ```

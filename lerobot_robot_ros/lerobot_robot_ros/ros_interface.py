@@ -20,7 +20,7 @@ import rclpy
 from control_msgs.action import GripperCommand
 from lerobot.utils.errors import DeviceNotConnectedError
 from rclpy.action import ActionClient
-from rclpy.callback_groups import ReentrantCallbackGroup
+from rclpy.callback_groups import ReentrantCallbackGroup  # Still used for gripper_action_client
 from rclpy.executors import Executor, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.publisher import Publisher
@@ -29,13 +29,12 @@ from std_msgs.msg import Float64MultiArray
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 
 from .config import ActionType, GripperActionType, ROS2InterfaceConfig
-from .moveit_servo import MoveIt2Servo
 
 logger = logging.getLogger(__name__)
 
 
 class ROS2Interface:
-    """Class to interface with a MoveIt2 manipulator.
+    """Class to interface with a ROS2 robot arm using ros2_control.
 
     This class supports both JointGroupPositionController and JointTrajectoryController
     from ros2_control for arm control, depending on the configuration:
@@ -43,12 +42,14 @@ class ROS2Interface:
     - ActionType.JOINT_POSITION:
       Uses JointGroupPositionController.
       Publishes Float64MultiArray messages to '/position_controller/commands'
+      Ultra-low latency (~15-20ms) for responsive control.
 
     - ActionType.JOINT_TRAJECTORY:
       Uses JointTrajectoryController.
       Publishes JointTrajectory messages to '/arm_controller/joint_trajectory'
+      Smoother motion with trajectory interpolation.
 
-    The gripper control also supports both trajectory and action-based control
+    The gripper control supports both trajectory and action-based control
     via the gripper_action_type configuration option.
 
     The executor thread is also used to spin camera nodes for ROS2Camera instances,
@@ -64,7 +65,6 @@ class ROS2Interface:
         self.gripper_action_client: ActionClient | None = None
         self.gripper_traj_pub: Publisher | None = None
         self.executor: Executor | None = None
-        self.moveit2_servo: MoveIt2Servo | None = None
         self.executor_thread: threading.Thread | None = None
         self.is_connected = False
         self._last_joint_state: dict[str, dict[str, float]] | None = None
@@ -74,7 +74,7 @@ class ROS2Interface:
         if not rclpy.ok():
             rclpy.init()
 
-        self.robot_node = Node("moveit2_interface_node", namespace=self.config.namespace)
+        self.robot_node = Node("ros2_interface_node", namespace=self.config.namespace)
         if self.action_type == ActionType.JOINT_POSITION:
             self.pos_cmd_pub = self.robot_node.create_publisher(
                 Float64MultiArray, f"/{self.config.position_controller_name}/commands", 10
@@ -82,12 +82,6 @@ class ROS2Interface:
         elif self.action_type == ActionType.JOINT_TRAJECTORY:
             self.traj_cmd_pub = self.robot_node.create_publisher(
                 JointTrajectory, f"/{self.config.arm_controller_name}/joint_trajectory", 10
-            )
-        elif self.action_type == ActionType.CARTESIAN_VELOCITY:
-            self.moveit2_servo = MoveIt2Servo(
-                node=self.robot_node,
-                frame_id=self.config.base_link,
-                callback_group=ReentrantCallbackGroup(),
             )
 
         if self.config.gripper_action_type == GripperActionType.TRAJECTORY:
@@ -164,15 +158,6 @@ class ROS2Interface:
             msg = Float64MultiArray()
             msg.data = joint_positions
             self.pos_cmd_pub.publish(msg)
-
-    def servo(self, linear, angular, normalize: bool = True) -> None:
-        if not self.moveit2_servo:
-            raise DeviceNotConnectedError("ROS2Interface is not connected. You need to call `connect()`.")
-
-        if normalize:
-            linear = [v * self.config.max_linear_velocity for v in linear]
-            angular = [v * self.config.max_angular_velocity for v in angular]
-        self.moveit2_servo.servo(linear=linear, angular=angular)
 
     def send_gripper_command(self, position: float, unnormalize: bool = True) -> bool:
         """
@@ -292,8 +277,6 @@ class ROS2Interface:
         if self.robot_node:
             self.robot_node.destroy_node()
             self.robot_node = None
-        if self.moveit2_servo:
-            self.moveit2_servo = None
 
         # Remove camera nodes from executor (if any)
         for camera_node in self.camera_nodes:

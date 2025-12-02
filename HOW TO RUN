@@ -1,0 +1,115 @@
+First open isaac sim and load the usd file inside isaasim fold 
+
+Run the simulation
+
+
+
+#Load ros control and moveit 
+cd isaac_franka_moveit_perception
+source install/setup.bash  
+ros2 launch perception_pipeline perception_pipeline_demo.launch.py
+
+
+## Teleoperation Options
+
+### Option 1: Joint Space Control (Control individual joints)
+# Keys: Q/A (joint1), W/S (joint2), E/D (joint3), R/F (joint4),
+#       T/G (joint5), Y/H (joint6), U/J (joint7), O/L (gripper)
+
+lerobot-teleoperate \
+  --robot.type=panda_ros \
+  --robot.id=my_panda_follower \
+  --teleop.type=keyboard_joint_panda \
+  --teleop.id=my_panda_leader \
+  --display_data=true
+
+### Option 2: Keyboard End-Effector Control (IK-based Cartesian position)
+# Keys: `W/S` move forward/backward (Y), `A/D` left/right (X), `Q/E` down/up (Z), `L` closes gripper, `O` opens it.
+# This mode performs inverse kinematics internally—MoveIt Servo is not required.
+# Required launches (each in its own terminal, after Isaac Sim is running):
+#   1. cd isaac_franka_moveit_perception && source install/setup.bash
+#   2. ros2 launch perception_pipeline perception_pipeline_demo.launch.py
+
+lerobot-teleoperate \
+  --robot.type=panda_ros \
+  --robot.id=my_panda_follower \
+  --teleop.type=keyboard_ee_panda \
+  --teleop.id=my_panda_leader \
+  --display_data=true
+
+### Option 3: SpaceMouse End-Effector Control (IK-based Cartesian position)
+
+This mirrors the keyboard EE pipeline but swaps in analog deltas from a 3Dconnexion SpaceMouse. The teleop node subscribes to the `sensor_msgs/msg/Joy` stream, remaps axes to the Panda base frame, applies a configurable dead zone, scales by `linear_step_m`, and forwards the result to the shared IK processor (`KeyboardEEDeltaToJointStep`). The processor performs FK/IK with placo, clips to `workspace_min/max`, and the ROS2 robot publishes a single-point joint trajectory plus a `GripperCommand`. MoveIt Servo is **not** required for this mode.
+
+#### Launch checklist
+1. **SpaceMouse driver**
+   ```bash
+   ros2 run spacenav spacenav_node --ros-args -r /spacenav/joy:=/joy
+   # Or skip the remap and run teleop with --teleop.config.joy_topic=/spacenav/joy
+   ```
+2. **Perception stack** – same terminals as Option 2 (Isaac Sim already running):
+   - `ros2 launch perception_pipeline perception_pipeline_demo.launch.py`
+3. **Optional monitoring** – `ros2 topic echo /spacenav/joy --once` to confirm axes/buttons.
+
+#### Runtime loop (default 60 Hz)
+1. `lerobot-teleoperate` grabs the latest robot observation (joint states, cameras).
+2. `SpaceMouseEEPandaTeleop` returns `{delta_x, delta_y, delta_z, gripper}` based on the last `Joy` message; buttons zero the gripper to close or open.
+3. The IK step adds deltas to the cached EE pose, clips them, solves IK with `position_weight=1.0` / `orientation_weight` from the config, and converts to `{panda_joint*.pos, gripper.pos}`.
+4. `ROS2Robot.send_action` applies safety clipping, publishes the joint trajectory, and sends the gripper goal. The ros2_control trajectory controller smooths the motion at 100 Hz.
+
+#### Key parameters to tune
+- `--teleop.config.linear_step_m=0.01` → 1 cm per full deflection. Lower (e.g. `0.003`) for fine manipulation; higher (`0.02`) for coarse moves.
+- `--teleop.config.dead_zone=0.05` filters hand tremor; decrease for more responsiveness.
+- `--teleop.config.orientation_weight=0.05` governs wrist stability. Raise toward `0.5–1.0` when the end-effector orientation must stay aligned.
+- `--teleop.config.workspace_min/max` shrink the reachable box near obstacles.
+- `--teleop.config.invert_{x,y,z}` flips axes to match your intuition.
+
+#### Command example
+```bash
+# Teleoperation with camera (trajectory control - smooth motion)
+lerobot-teleoperate \
+  --robot.type=panda_ros \
+  --robot.id=my_panda_follower \
+  --teleop.type=spacemouse_ee_panda \
+  --teleop.id=my_spacemouse_leader \
+  --display_data=true
+
+# Teleoperation with camera (position control - fast, low-latency)
+lerobot-teleoperate \
+  --robot.type=panda_ros_position \
+  --robot.id=my_panda_follower \
+  --teleop.type=spacemouse_ee_panda \
+  --teleop.id=my_spacemouse_leader \
+  --display_data=true
+```
+
+#### Robot types
+- **`panda_ros`**: Trajectory control (smooth motion, ~100ms latency)
+- **`panda_ros_position`**: Position control (fast, ~15-20ms latency)
+
+Both robot types include camera support by default.
+
+#### Camera configuration
+- **Default resolution**: 640×480 (VGA) - standard across LeRobot datasets (ALOHA, Reachy2, LeKiwi)
+- Camera settings via environment variables:
+  - `LEROBOT_CAMERA_TOPIC=/rgb/camera_1` (default)
+  - `LEROBOT_CAMERA_WIDTH=640` (default)
+  - `LEROBOT_CAMERA_HEIGHT=480` (default)
+  - `LEROBOT_CAMERA_FPS=30` (default)
+- Camera observations are automatically included in observations and datasets
+
+#### Quick recording script
+- Run `./record_spacemouse_ee.sh` to start `lerobot-record` with the same Panda + SpaceMouse EE setup. The script reuses any active conda env, otherwise tries `lerobot-ros-isaac` / `lerobot-ros`, then falls back to `.venv` or system Python, and stores data under `~/lerobot_datasets/spacemouse-ee-teleop`.
+- New runs default to `LEROBOT_RESUME=false`; if the base folder already exists a timestamp suffix is added automatically (e.g. `.../spacemouse-ee-teleop_20251112-170240`). Set `LEROBOT_RESUME=true` only when you truly want to append to an existing dataset.
+- Override defaults with environment variables, for example `LEROBOT_NUM_EPISODES=5 LEROBOT_DATASET_FPS=30 ./record_spacemouse_ee.sh`. The default Hugging Face repo id is `ases200q2/spacemouse-ee-teleop`; override with `LEROBOT_DATASET_REPO_ID=<user/dataset>` if needed.
+- Pass extra CLI overrides directly, e.g. `./record_spacemouse_ee.sh --teleop.config.linear_step_m=0.005`. 
+
+#### Data captured during `lerobot-teleoperate`
+- **Actions**: Joint targets post-IK (`panda_joint*.pos`, `gripper.pos`).
+- **Observations**: Joint states plus any active camera feeds.
+- To log the raw SpaceMouse deltas alongside IK outputs, extend the teleop pipeline with `AddTeleopActionAsComplimentaryDataStep` before the IK step.
+
+#### Tips for smooth teleoperation
+- Keep the knob centred when idle; the dead zone prevents residual drift.
+- If orientation drift accumulates, bump `orientation_weight` or periodically re-orient via opposite motion.
+- Enable debug logs (`export LEROBOT_LOG_LEVEL=debug`) to monitor IK residuals—large values hint at workspace limits or approaching singularities.

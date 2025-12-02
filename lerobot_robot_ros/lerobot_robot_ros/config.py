@@ -20,7 +20,6 @@ from lerobot.robots import RobotConfig
 
 
 class ActionType(Enum):
-    CARTESIAN_VELOCITY = "cartesian_velocity"
     JOINT_POSITION = "joint_position"
     JOINT_TRAJECTORY = "joint_trajectory"
 
@@ -47,15 +46,10 @@ class ROS2InterfaceConfig:
     )
     gripper_joint_name: str = "gripper_joint"
 
-    # Base link name for computing end effector pose / velocity
-    # Only applicable for cartesian control
+    # Base link name for computing end effector pose
     base_link: str = "base_link"
 
-    # Only applicable if velocity control is used.
-    max_linear_velocity: float = 0.10
-    max_angular_velocity: float = 0.25  # rad/s
-
-    # Only applicable if position control is used.
+    # Joint position limits
     min_joint_positions: list[float] | None = None
     max_joint_positions: list[float] | None = None
 
@@ -74,7 +68,7 @@ class ROS2InterfaceConfig:
 
 @dataclass
 class ROS2Config(RobotConfig):
-    # Action type for controlling the robot. Can be 'cartesian_velocity' or 'joint_position'.
+    # Action type for controlling the robot: 'joint_position' or 'joint_trajectory'.
     action_type: ActionType = ActionType.JOINT_POSITION
 
     # `max_relative_target` limits the magnitude of the relative positional target vector for safety purposes.
@@ -96,7 +90,7 @@ class AnninAR4Config(ROS2Config):
     AR4-specific settings
     """
 
-    action_type: ActionType = ActionType.CARTESIAN_VELOCITY
+    action_type: ActionType = ActionType.JOINT_TRAJECTORY
 
     ros2_interface: ROS2InterfaceConfig = field(
         default_factory=lambda: ROS2InterfaceConfig(
@@ -116,8 +110,6 @@ class AnninAR4Config(ROS2Config):
 class SO101ROSConfig(ROS2Config):
     """Configuration for the ROS 2 version of SO101: https://github.com/Pavankv92/lerobot_ws."""
 
-    # Use JOINT_POSITION for compatibility with ROS2 Humble (no MoveIt Servo required)
-    # Change to CARTESIAN_VELOCITY if you have MoveIt Servo configured
     action_type: ActionType = ActionType.JOINT_POSITION
 
     ros2_interface: ROS2InterfaceConfig = field(
@@ -133,83 +125,18 @@ class SO101ROSConfig(ROS2Config):
     )
 
 
-@RobotConfig.register_subclass("panda_ros")
-@dataclass
-class PandaROSConfig(ROS2Config):
-    """Configuration for Franka Emika Panda robot with Isaac Sim / MoveIt2."""
-
-    # Use JOINT_TRAJECTORY for MoveIt integration
-    # Can also use CARTESIAN_VELOCITY with MoveIt Servo
-    action_type: ActionType = ActionType.JOINT_TRAJECTORY
-
-    ros2_interface: ROS2InterfaceConfig = field(
-        default_factory=lambda: ROS2InterfaceConfig(
-            arm_joint_names=[
-                "panda_joint1",
-                "panda_joint2",
-                "panda_joint3",
-                "panda_joint4",
-                "panda_joint5",
-                "panda_joint6",
-                "panda_joint7",
-            ],
-            gripper_joint_name="panda_finger_joint1",
-            base_link="panda_link0",
-            min_joint_positions=[-2.9671, -1.8326, -2.9671, -3.1416, -2.9671, -0.0873, -2.9671],
-            max_joint_positions=[2.9671, 1.8326, 2.9671, 0.0873, 2.9671, 3.8223, 2.9671],
-            gripper_open_position=0.04,
-            gripper_close_position=0.0,
-            gripper_action_type=GripperActionType.ACTION,
-            arm_controller_name="panda_arm_controller",
-            gripper_controller_name="panda_hand_controller",
-        ),
-    )
-
-
-@RobotConfig.register_subclass("panda_ros_servo")
-@dataclass
-class PandaROSServoConfig(PandaROSConfig):
-    """Configuration for Franka Emika Panda robot with MoveIt Servo (Cartesian velocity control).
-
-    This config is optimized for SpaceMouse teleoperation and other Cartesian velocity control use cases.
-    Uses MoveIt Servo for real-time end-effector velocity control.
-    """
-
-    action_type: ActionType = ActionType.CARTESIAN_VELOCITY
-
-    ros2_interface: ROS2InterfaceConfig = field(
-        default_factory=lambda: ROS2InterfaceConfig(
-            arm_joint_names=[
-                "panda_joint1",
-                "panda_joint2",
-                "panda_joint3",
-                "panda_joint4",
-                "panda_joint5",
-                "panda_joint6",
-                "panda_joint7",
-            ],
-            gripper_joint_name="panda_finger_joint1",
-            base_link="panda_link0",
-            min_joint_positions=[-2.9671, -1.8326, -2.9671, -3.1416, -2.9671, -0.0873, -2.9671],
-            max_joint_positions=[2.9671, 1.8326, 2.9671, 0.0873, 2.9671, 3.8223, 2.9671],
-            gripper_open_position=0.04,
-            gripper_close_position=0.0,
-            gripper_action_type=GripperActionType.ACTION,
-            arm_controller_name="panda_arm_controller",
-            gripper_controller_name="panda_hand_controller",
-            # Increased max velocities for smoother SpaceMouse control
-            max_linear_velocity=0.4,  # m/s
-            max_angular_velocity=0.8,  # rad/s
-        ),
-    )
-
-
-def _get_isaac_camera_config() -> dict[str, CameraConfig]:
-    """Get camera configuration from environment variables or use defaults for Isaac Sim.
+def _get_camera_config() -> dict[str, CameraConfig]:
+    """Get camera configuration from environment variables or use defaults.
 
     Default resolution is 640×480 (VGA), which is the standard used across LeRobot datasets
     like ALOHA, Reachy2, and LeKiwi. This provides a good balance between image quality
     and dataset size, and is compatible with all policy types.
+
+    Camera settings can be customized via environment variables:
+    - LEROBOT_CAMERA_TOPIC (default: /rgb/camera_1)
+    - LEROBOT_CAMERA_WIDTH (default: 640)
+    - LEROBOT_CAMERA_HEIGHT (default: 480)
+    - LEROBOT_CAMERA_FPS (default: 30)
     """
     try:
         from .ros2_camera import ROS2CameraConfig
@@ -234,45 +161,61 @@ def _get_isaac_camera_config() -> dict[str, CameraConfig]:
         return {}
 
 
-@RobotConfig.register_subclass("panda_ros_isaac")
+@RobotConfig.register_subclass("panda_ros")
 @dataclass
-class PandaROSIsaacConfig(PandaROSConfig):
-    """Configuration for Franka Emika Panda robot with Isaac Sim and camera support.
+class PandaROSConfig(ROS2Config):
+    """Configuration for Franka Emika Panda robot with ROS2.
 
-    This config automatically includes ROS2 camera configuration for Isaac Sim.
-    Default resolution is 640×480 (VGA), matching standard LeRobot datasets.
-
-    Camera settings can be customized via environment variables:
-    - LEROBOT_CAMERA_TOPIC (default: /rgb/camera_1)
-    - LEROBOT_CAMERA_WIDTH (default: 640)
-    - LEROBOT_CAMERA_HEIGHT (default: 480)
-    - LEROBOT_CAMERA_FPS (default: 30)
+    Uses JOINT_TRAJECTORY for smooth motion with trajectory interpolation.
+    Includes ROS2 camera support (configurable via environment variables).
 
     Example:
-        lerobot-record --robot.type=panda_ros_isaac --robot.id=my_panda ...
+        lerobot-record --robot.type=panda_ros --robot.id=my_panda ...
     """
 
-    cameras: dict[str, CameraConfig] = field(default_factory=_get_isaac_camera_config)
+    action_type: ActionType = ActionType.JOINT_TRAJECTORY
+
+    cameras: dict[str, CameraConfig] = field(default_factory=_get_camera_config)
+
+    ros2_interface: ROS2InterfaceConfig = field(
+        default_factory=lambda: ROS2InterfaceConfig(
+            arm_joint_names=[
+                "panda_joint1",
+                "panda_joint2",
+                "panda_joint3",
+                "panda_joint4",
+                "panda_joint5",
+                "panda_joint6",
+                "panda_joint7",
+            ],
+            gripper_joint_name="panda_finger_joint1",
+            base_link="panda_link0",
+            min_joint_positions=[-2.9671, -1.8326, -2.9671, -3.1416, -2.9671, -0.0873, -2.9671],
+            max_joint_positions=[2.9671, 1.8326, 2.9671, 0.0873, 2.9671, 3.8223, 2.9671],
+            gripper_open_position=0.04,
+            gripper_close_position=0.0,
+            gripper_action_type=GripperActionType.ACTION,
+            arm_controller_name="panda_arm_controller",
+            gripper_controller_name="panda_hand_controller",
+        ),
+    )
 
 
-@RobotConfig.register_subclass("panda_ros_isaac_fast")
+@RobotConfig.register_subclass("panda_ros_position")
 @dataclass
-class PandaROSIsaacFastConfig(PandaROSIsaacConfig):
-    """Fast configuration for Franka Emika Panda with direct position control.
+class PandaROSPositionConfig(PandaROSConfig):
+    """Configuration for Franka Emika Panda with direct position control.
 
-    This config uses JOINT_POSITION action type for ultra-low latency control
-    (~15-20ms vs ~120ms with trajectory control). Ideal for responsive teleoperation
-    with SpaceMouse or other input devices.
+    Uses JOINT_POSITION action type for ultra-low latency control
+    (~15-20ms vs ~120ms with trajectory control). Ideal for responsive teleoperation.
 
     Uses JointGroupPositionController instead of JointTrajectoryController:
     - No trajectory interpolation (instant command execution)
     - 6-8x faster response time
     - Slightly jerkier motion (no smoothing)
 
-    Includes camera support for Isaac Sim (640×480 VGA, matching LeRobot datasets).
-
     Example:
-        lerobot-record --robot.type=panda_ros_isaac_fast --robot.id=my_panda ...
+        lerobot-record --robot.type=panda_ros_position --robot.id=my_panda ...
     """
 
     action_type: ActionType = ActionType.JOINT_POSITION
@@ -297,29 +240,5 @@ class PandaROSIsaacFastConfig(PandaROSIsaacConfig):
             gripper_action_type=GripperActionType.ACTION,
             position_controller_name="panda_position_controller",
             gripper_controller_name="panda_hand_controller",
-            max_linear_velocity=0.4,
-            max_angular_velocity=0.8,
         ),
     )
-
-
-@RobotConfig.register_subclass("panda_ros_servo_isaac")
-@dataclass
-class PandaROSServoIsaacConfig(PandaROSServoConfig):
-    """Configuration for Franka Emika Panda with MoveIt Servo and Isaac Sim camera support.
-
-    Combines Cartesian velocity control (MoveIt Servo) with camera observations from Isaac Sim.
-    Optimized for SpaceMouse teleoperation with visual feedback.
-    Default resolution is 640×480 (VGA), matching standard LeRobot datasets.
-
-    Camera settings can be customized via environment variables:
-    - LEROBOT_CAMERA_TOPIC (default: /rgb/camera_1)
-    - LEROBOT_CAMERA_WIDTH (default: 640)
-    - LEROBOT_CAMERA_HEIGHT (default: 480)
-    - LEROBOT_CAMERA_FPS (default: 30)
-
-    Example:
-        lerobot-teleoperate --robot.type=panda_ros_servo_isaac --teleop.type=spacemouse_ee_panda ...
-    """
-
-    cameras: dict[str, CameraConfig] = field(default_factory=_get_isaac_camera_config)

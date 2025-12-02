@@ -1,0 +1,32 @@
+# Global OctoMap resolution (meters per voxel)
+octomap_resolution: 0.02
+
+sensors:
+  - camera_1_pointcloud
+
+camera_1_pointcloud:
+    sensor_plugin: occupancy_map_monitor/PointCloudOctomapUpdater
+    point_cloud_topic: /camera_1/points
+    max_range: 5.0
+    point_subsample: 1
+    padding_offset: 0.1
+    padding_scale: 1.0
+    max_update_rate: 2.0
+    filtered_cloud_topic: /camera_1/filtered_points
+
+    # Self-filtering parameters
+    self_filter:
+        self_mask:
+          self_see_links:
+            - panda_link0
+            - panda_link1
+            - panda_link2
+            - panda_link3
+            - panda_link4
+            - panda_link5
+            - panda_link6
+            - panda_link7
+            - panda_hand
+            - panda_leftfinger
+            - panda_rightfinger
+
