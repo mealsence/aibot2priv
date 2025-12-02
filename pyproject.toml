@@ -1,0 +1,195 @@
+# =============================================================================
+# LeRobot ROS Agent - Project Configuration
+# =============================================================================
+# This pyproject.toml supports installation via uv (recommended) or pip
+# For uv installation, see INSTALL/UV_INSTALL.md
+# =============================================================================
+
+[project]
+name = "lerobot-ros-agent"
+version = "0.1.0"
+description = "LeRobot with ROS2 integration for robotic manipulation and VLA inference"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10,<3.12"
+authors = [
+    { name = "Cihan" },
+]
+keywords = ["robotics", "ros2", "lerobot", "vla", "deep-learning", "pytorch"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Robotics",
+]
+
+# =============================================================================
+# Core Dependencies
+# =============================================================================
+dependencies = [
+    # --- NumPy (pinned for ROS2 cv_bridge compatibility) ---
+    "numpy>=1.24.0,<2.0.0",
+    
+    # --- Core ML/DL ---
+    "einops>=0.8.0,<0.9.0",
+    "safetensors>=0.4.3,<1.0.0",
+    "accelerate>=1.10.0,<2.0.0",
+    
+    # --- Hugging Face ---
+    "datasets>=4.0.0,<4.2.0",
+    "diffusers>=0.27.2,<0.36.0",
+    "huggingface-hub[hf-transfer,cli]>=0.34.2,<0.36.0",
+    "transformers>=4.45.0,<5.0.0",
+    
+    # --- Image/Video Processing ---
+    "opencv-python>=4.9.0,<4.10.0",
+    "opencv-python-headless>=4.9.0,<4.10.0",
+    "pillow>=10.0.0,<13.0.0",
+    "av>=15.0.0,<16.0.0",
+    "imageio[ffmpeg]>=2.34.0,<3.0.0",
+    
+    # --- Gradio Agent ---
+    "gradio>=4.44.0",
+    "pydub>=0.25.1",
+    "soundfile>=0.12.1",
+    "scipy>=1.11.0",
+    "gTTS>=2.5.0",
+    "librosa>=0.11.0",
+    
+    # --- LLM Clients ---
+    "openai>=1.0.0",
+    "google-genai>=1.0.0",
+    
+    # --- Visualization ---
+    "matplotlib>=3.8.0,<4.0.0",
+    "transforms3d>=0.4.2",
+    "rerun-sdk>=0.24.0,<0.27.0",
+    
+    # --- Utilities ---
+    "pyyaml>=6.0",
+    "jsonlines>=4.0.0,<5.0.0",
+    "termcolor>=2.4.0,<4.0.0",
+    "tqdm>=4.66.0",
+    "rich>=13.0.0",
+    "typing-extensions>=4.10.0",
+    "packaging>=24.2,<26.0",
+    "deepdiff>=7.0.1,<9.0.0",
+    
+    # --- LeRobot Core Dependencies ---
+    "draccus==0.10.0",
+    "gymnasium>=1.1.1,<2.0.0",
+    "wandb>=0.20.0,<0.22.0",
+    "pynput>=1.7.7,<1.9.0",
+    "pyserial>=3.5,<4.0",
+    "setuptools>=71.0.0,<81.0.0",
+    "cmake>=3.29.0.1,<4.2.0",
+]
+
+# =============================================================================
+# Optional Dependencies
+# =============================================================================
+[project.optional-dependencies]
+
+# PyTorch with CUDA 12.8 (for RTX 40/50 series)
+# Note: Install separately with: uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+cuda128 = []
+
+# Development tools
+dev = [
+    "pytest>=8.1.0,<9.0.0",
+    "pytest-cov>=5.0.0,<8.0.0",
+    "pre-commit>=3.7.0,<5.0.0",
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "debugpy>=1.8.1,<1.9.0",
+]
+
+# Policy-specific dependencies
+smolvla = [
+    "num2words>=0.5.14,<0.6.0",
+    "peft>=0.13.0,<1.0.0",
+]
+
+pi = [
+    "transformers @ git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi",
+]
+
+# Async inference
+async-inference = [
+    "grpcio>=1.60.0",
+    "protobuf>=4.25.0",
+]
+
+# All optional dependencies (except CUDA - install separately)
+all = [
+    "lerobot-ros-agent[dev]",
+    "lerobot-ros-agent[smolvla]",
+    "lerobot-ros-agent[async-inference]",
+]
+
+# =============================================================================
+# Project URLs
+# =============================================================================
+[project.urls]
+homepage = "https://github.com/your-username/lerobot-ros-agent"
+documentation = "https://github.com/your-username/lerobot-ros-agent#readme"
+repository = "https://github.com/your-username/lerobot-ros-agent"
+
+# =============================================================================
+# Build System
+# =============================================================================
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["gradio_agent"]
+
+# =============================================================================
+# UV Configuration
+# =============================================================================
+[tool.uv]
+# Use system Python if available (important for ROS2 compatibility)
+python-preference = "system"
+
+# Extra index for PyTorch CUDA builds
+extra-index-url = ["https://download.pytorch.org/whl/cu128"]
+
+# =============================================================================
+# Ruff Configuration
+# =============================================================================
+[tool.ruff]
+target-version = "py310"
+line-length = 110
+exclude = ["*_pb2.py", "*_pb2_grpc.py", "lerobot/", "build/", "install/"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "N", "UP", "SIM"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "F403"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
+# =============================================================================
+# Pytest Configuration
+# =============================================================================
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+
+# =============================================================================
+# MyPy Configuration
+# =============================================================================
+[tool.mypy]
+python_version = "3.10"
+ignore_missing_imports = true
+follow_imports = "skip"
+

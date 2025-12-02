@@ -1,11 +1,43 @@
-How to install   
+## How to Install
 
-colcon the ros packages 
+### Option 1: UV Installation (Recommended - Fast)
 
+Use [uv](https://docs.astral.sh/uv/) for a fast, reproducible installation:
 
-install submodules 
+```bash
+# Clone with submodules
+git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
+cd lerobot-ros-agent
 
-The lerobot directory is now a git submodule. When you clone this repository, run git submodule update --init --recursive to initialize it, or use git clone --recursive to clone with all submodules.
+# Run automated setup (CUDA 12.8 for RTX 40/50 series)
+./INSTALL/setup_with_uv.sh --cuda128
+
+# Activate environment
+source activate_env.sh
+```
+
+See [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) for detailed instructions.
+
+### Option 2: Conda Installation
+
+```bash
+# Use existing conda setup script
+./INSTALL/setup_lerobot_rtx5090_venv.sh
+```
+
+### Git Submodules
+
+The `lerobot` directory is a git submodule. When cloning:
+- Use `git clone --recursive` to clone with all submodules, OR
+- Run `git submodule update --init --recursive` after cloning
+
+### Build ROS2 Packages
+
+```bash
+cd isaac_franka_moveit_perception
+colcon build --symlink-install
+source install/setup.bash
+```
 
 
 
