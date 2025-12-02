@@ -80,3 +80,6 @@ h2r_franka_ROS2/
 lerobot-ros/lerobot_teleoperator_devices/lerobot_teleoperator_devices/processors/_cache/
 outputs/
 detected_objects/
+
+# Gradio
+.gradio/

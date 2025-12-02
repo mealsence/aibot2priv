@@ -1,3 +1,15 @@
+How to install   
+
+colcon the ros packages 
+
+
+install submodules 
+
+The lerobot directory is now a git submodule. When you clone this repository, run git submodule update --init --recursive to initialize it, or use git clone --recursive to clone with all submodules.
+
+
+
+
 First open isaac sim and load the usd file inside isaasim fold 
 
 Run the simulation
