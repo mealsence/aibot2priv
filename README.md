@@ -1,166 +1,263 @@
 # LeRobot ROS Agent
 
-This repository provides a generic ROS 2 interface for the [LeRobot](https://github.com/huggingface/lerobot) framework. It acts as a lightweight wrapper to connect any [ros2_control](https://control.ros.org/rolling/index.html) or [MoveIt](https://moveit.ai/) compatible robot arm with the LeRobot ecosystem.
+A comprehensive integration of [LeRobot](https://github.com/huggingface/lerobot) with ROS2 for robotic manipulation, featuring Franka Panda robot control, teleoperation, data collection, training, and Vision-Language-Action (VLA) inference capabilities.
 
-Designed to work with different simulations (Isaac Sim, Gazebo, etc.), different robots, and real robots.
+## 🚀 Features
 
-**Supported control modes:**
+- **Robot Control**: Support for Franka Panda robot via ROS2 with trajectory and position control modes
+- **Teleoperation**: Multiple teleoperation modes (keyboard joint control, keyboard end-effector control, SpaceMouse)
+- **Data Collection**: Automated data collection scripts for training datasets
+- **Training**: Multi-GPU training support with LeRobot policies
+- **Inference**: Async policy inference server and client implementations
+- **Gradio Agent**: Voice-controlled robot agent with LLM integration (OpenAI, Gemini)
+- **Isaac Sim Integration**: Full support for NVIDIA Isaac Sim simulation environment
+- **MoveIt Integration**: Complete MoveIt2 integration for motion planning
 
-- Joint position control with ros2_control
-  - Using [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html) - smoother motion with trajectory interpolation
-  - Using [position_controllers](https://control.ros.org/rolling/doc/ros2_controllers/position_controllers/doc/userdoc.html) - ultra-low latency direct position control
-- End-effector control via IK (inverse kinematics)
-  - SpaceMouse and keyboard end-effector control with placo IK solver
-- Gripper control with ros2_control
-  - Using [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html)
-  - Using [Gripper Action Controller](https://control.ros.org/jazzy/doc/ros2_controllers/gripper_controllers/doc/userdoc.html)
+## 📋 Prerequisites
 
-## Video Demo
+- **ROS2 Humble** (or compatible distro)
+- **NVIDIA Isaac Sim** (for simulation)
+- **Python 3.10 or 3.11**
+- **CUDA-capable GPU** (recommended: RTX 40/50 series with CUDA 12.8)
+- **SpaceMouse** (optional, for 3D teleoperation)
 
-[![lerobot-ros](https://markdown-videos-api.jorgenkh.no/url?url=https%3A%2F%2Fyoutu.be%2F8U8vDyi5IAs)](https://youtu.be/8U8vDyi5IAs)
+## 🔧 Installation
 
-## Prerequisites
+### Option 1: UV Installation (Recommended - Fast)
 
-### Software Requirements
-
-Before getting started, ensure you have the following installed:
-
-- [ROS 2 Jazzy](https://docs.ros.org/en/jazzy/Installation.html) - This repo is only tested on Jazzy.
-- [ros2_control](https://control.ros.org/rolling/index.html)
-- If end-effector control is desired, then [MoveIt2](https://moveit.ai/install-moveit2/binary) needs to be installed
-
-## Quickstart with Simulated SO-101
-
-Below steps will allow you to perform keyboard teleoperation of a simulated SO-101 arm using Lerobot.
-
----
-
-First, setup LeRobot and lerobot-ros in a virtual environment. Note that the Python version of the virtualenv must be compatible with your ROS version. For ROS 2 Jazzy, we use Python 3.12.
+Use [uv](https://docs.astral.sh/uv/) for a fast, reproducible installation:
 
 ```bash
-# Create and activate virtual env
-conda create -y -n lerobot-ros python=3.12
-conda activate lerobot-ros
-
-# Install lerobot
-git clone https://github.com/huggingface/lerobot
-pip install -e lerobot
-
-# Install lerobot-ros-agent packages
-git clone <YOUR_REPO_URL>/lerobot-ros-agent
+# Clone with submodules
+git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
 cd lerobot-ros-agent
-pip install -e lerobot_robot_ros
-pip install -e lerobot_teleoperator_devices
+
+# Run automated setup (CUDA 12.8 for RTX 40/50 series)
+./INSTALL/setup_with_uv.sh --cuda128
+
+# Activate environment
+source activate_env.sh
 ```
 
-Then, setup the Simulated SO-101 by following instructions in: https://github.com/Pavankv92/lerobot_ws
+See [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) for detailed instructions.
 
-Finally, to run all programs:
+### Option 2: Conda Installation
 
 ```bash
-# In terminal 1, run the Gazebo simulation
-ros2 launch lerobot_description so101_gazebo.launch.py
+# Use existing conda setup script
+./INSTALL/setup_lerobot_rtx5090_venv.sh
+```
 
-# In terminal 2, load the ros2 controllers and run MoveIt
-ros2 launch lerobot_controller so101_controller.launch.py && \
-  ros2 launch lerobot_moveit so101_moveit.launch.py
+### Build ROS2 Packages
 
-# In terminal 3, run lerobot with the ROS version of so101 and keyboard teleop
-cd <YOUR lerobot-ros-agent DIRECTORY>
+```bash
+cd isaac_franka_moveit_perception
+colcon build --symlink-install
+source install/setup.bash
+```
+
+### Git Submodules
+
+The `lerobot` directory is a git submodule. When cloning:
+- Use `git clone --recursive` to clone with all submodules, OR
+- Run `git submodule update --init --recursive` after cloning
+
+## 🎮 Quick Start
+
+### 1. Start Isaac Sim
+
+1. Open Isaac Sim and load the USD file from `isaac_franka_moveit_perception/isaacsim/`
+2. Run the simulation
+
+### 2. Launch ROS2 Controller
+
+```bash
+./launch_position_control_tmux.sh
+```
+
+### 3. Move to Home Position
+
+```bash
+python3 isaac_franka_moveit_perception/move_to_joint_angles.py
+```
+
+### 4. Load ROS Control and MoveIt
+
+```bash
+cd isaac_franka_moveit_perception
+source install/setup.bash
+ros2 launch perception_pipeline perception_pipeline_demo.launch.py
+```
+
+## 📹 Data Collection
+
+### SpaceMouse End-Effector Control
+
+```bash
+./DATA_COLLECTION/record_spacemouse_ee_fast.sh
+```
+
+For more recording options, see:
+- `./DATA_COLLECTION/record_spacemouse_ee.sh` - Standard recording script
+- See [HOW TO RUN](HOW%20TO%20RUN) for detailed teleoperation options
+
+## 🎯 Teleoperation Options
+
+### Option 1: Joint Space Control
+
+Control individual joints with keyboard:
+- **Keys**: `Q/A` (joint1), `W/S` (joint2), `E/D` (joint3), `R/F` (joint4),
+- **Keys**: `T/G` (joint5), `Y/H` (joint6), `U/J` (joint7), `O/L` (gripper)
+
+```bash
 lerobot-teleoperate \
-  --robot.type=so101_ros \
-  --robot.id=my_awesome_follower_arm \
-  --teleop.type=keyboard_joint \
-  --teleop.id=my_awesome_leader_arm \
+  --robot.type=panda_ros \
+  --robot.id=my_panda_follower \
+  --teleop.type=keyboard_joint_panda \
+  --teleop.id=my_panda_leader \
   --display_data=true
 ```
 
-Once you have teleoperation working, you can use all standard LeRobot features as usual.
+### Option 2: Keyboard End-Effector Control
 
-## Robot Integration Guide
+IK-based Cartesian position control:
+- **Keys**: `W/S` move forward/backward (Y), `A/D` left/right (X), `Q/E` down/up (Z)
+- **Keys**: `L` closes gripper, `O` opens it
 
-This section describes how to integrate other ROS-based robots with Lerobot.
-
-### Arm Control Modes
-
-Currently the repo supports the following arm control modes:
-
-**Option 1: Joint Position Control (Fast)**
-
-This option uses [position_controllers](https://control.ros.org/rolling/doc/ros2_controllers/position_controllers/doc/userdoc.html) in `ros2_control`. It requires the robot to have:
-
-- `position_controllers/JointGroupPositionController` for the robot arm joints
-- `joint_state_broadcaster/JointStateBroadcaster` for joint state feedback
-
-This option is enabled by setting `action_type` to `ActionType.JOINT_POSITION` in robot config.
-Ultra-low latency (~15-20ms) for responsive teleoperation.
-
-**Option 2: Joint Trajectory Control (Smooth)**
-
-This option uses [joint_trajectory_controller](https://control.ros.org/rolling/doc/ros2_controllers/joint_trajectory_controller/doc/userdoc.html) in `ros2_control`. It requires the robot to have:
-
-- `joint_trajectory_controller/JointTrajectoryController` for the robot arm joints
-- `joint_state_broadcaster/JointStateBroadcaster` for joint state feedback
-
-This option is enabled by setting `action_type` to `ActionType.JOINT_TRAJECTORY` in robot config.
-Smoother motion with trajectory interpolation.
-
-### Gripper Control Modes
-
-The repo supports two gripper control modes that can be configured via the `gripper_action_type` setting:
-
-**Trajectory Control (`GripperActionType.TRAJECTORY`)**
-
-- Uses `JointTrajectoryController` from ros2_control
-- Publishes `JointTrajectory` messages to `/gripper_controller/joint_trajectory`
-
-**Action Control (`GripperActionType.ACTION`)**
-
-- Uses `GripperActionController` from ros2_control
-- Sends action goals to `/gripper_controller/gripper_cmd`
-- Provides feedback on whether the gripper reached its target position
-
-### Code Changes to Lerobot-ros
-
-Extend the `ROS2Robot` class in [robot.py](./lerobot_robot_ros/lerobot_robot_ros/robot.py).
-This class can be a simple pass-through. It's just is needed to satisfy lerobot device discovery requirements.
-
-```python
-class MyRobot(ROS2Robot):
-  pass
+```bash
+lerobot-teleoperate \
+  --robot.type=panda_ros \
+  --robot.id=my_panda_follower \
+  --teleop.type=keyboard_ee_panda \
+  --teleop.id=my_panda_leader \
+  --display_data=true
 ```
 
-Then, create a config class for your robot by sub-classing `ROS2Config` in [config.py](./lerobot_robot_ros/lerobot_robot_ros/config.py).
-The name of this class must be the same as your robot class, suffixed by `Config`.
-You may override joint names, gripper configurations, and other parameters as needed.
-An example config class for joint velocity control may look like this:
+### Option 3: SpaceMouse End-Effector Control
 
-```python
-from dataclasses import dataclass, field
-from lerobot.common.robots.config import RobotConfig
-from lerobot.common.robots.config import ROS2Config, ROS2InterfaceConfig
+Analog 3D control with SpaceMouse:
 
-@RobotConfig.register_subclass("my_ros2_robot")
-@dataclass
-class MyRobotConfig(ROS2Config):
-    action_type: ActionType = ActionType.JOINT_TRAJECTORY  # or JOINT_POSITION for faster control
+1. **Start SpaceMouse driver**:
+   ```bash
+   ros2 run spacenav spacenav_node --ros-args -r /spacenav/joy:=/joy
+   ```
 
-    ros2_interface: ROS2InterfaceConfig = field(
-        default_factory=lambda: ROS2InterfaceConfig(
-            base_link="base_link",
-            arm_joint_names=[
-                "joint_1",
-                "joint_2",
-                "joint_3",
-                "joint_4",
-                "joint_5",
-                "joint_6",
-            ],
-            gripper_joint_name="gripper_joint",
-            gripper_open_position=0.0,
-            gripper_close_position=1.0,
-            min_joint_positions=[-3.14, -3.14, -3.14, -3.14, -3.14, -3.14],  # Optional: joint limits
-            max_joint_positions=[3.14, 3.14, 3.14, 3.14, 3.14, 3.14],
-        )
-    )
+2. **Run teleoperation**:
+   ```bash
+   # Trajectory control (smooth motion, ~100ms latency)
+   lerobot-teleoperate \
+     --robot.type=panda_ros \
+     --robot.id=my_panda_follower \
+     --teleop.type=spacemouse_ee_panda \
+     --teleop.id=my_spacemouse_leader \
+     --display_data=true
+   
+   # Position control (fast, ~15-20ms latency)
+   lerobot-teleoperate \
+     --robot.type=panda_ros_position \
+     --robot.id=my_panda_follower \
+     --teleop.type=spacemouse_ee_panda \
+     --teleop.id=my_spacemouse_leader \
+     --display_data=true
+   ```
+
+**Key Parameters**:
+- `--teleop.config.linear_step_m=0.01` - Step size (default: 1cm per full deflection)
+- `--teleop.config.dead_zone=0.05` - Dead zone to filter hand tremor
+- `--teleop.config.orientation_weight=0.05` - Wrist stability weight
+
+See [HOW TO RUN](HOW%20TO%20RUN) for detailed teleoperation documentation.
+
+## 🧪 Evaluation
+
+```bash
+./EVALUATION/eval.sh <model_checkpoint>
 ```
+
+## 🤖 Gradio Agent (Voice-Controlled Robot)
+
+Run the voice-controlled robot agent with LLM integration:
+
+```bash
+cd gradio_agent
+python demo_tool_calling.py
+```
+
+**Options**:
+- `--llm openai` or `--llm gemini` - Choose LLM provider
+- `--transcriber openai|gemini|meralion` - Choose transcription service
+- `--preload-policy` - Preload VLA policy for faster inference
+- `--discover-arm-server` - Enable action server discovery
+
+The interface will be available at `http://0.0.0.0:7868`
+
+See [gradio_agent/README.md](gradio_agent/README.md) for detailed documentation.
+
+## 📁 Project Structure
+
+```
+lerobot-ros-agent/
+├── DATA_COLLECTION/      # Data collection scripts
+├── DATASET/              # Dataset utilities
+├── EVALUATION/           # Evaluation scripts
+├── INFERENCE/            # Policy inference examples
+├── INSTALL/              # Installation scripts
+├── TRAIN/                # Training scripts
+├── TEST/                 # Test scripts
+├── gradio_agent/         # Gradio-based voice agent
+├── isaac_franka_moveit_perception/  # ROS2 packages
+├── lerobot_robot_ros/    # LeRobot ROS2 robot interface
+└── lerobot_teleoperator_devices/    # Teleoperation devices
+```
+
+## 🔍 Camera Configuration
+
+Default camera settings (640×480 VGA - standard for LeRobot datasets):
+
+```bash
+export LEROBOT_CAMERA_TOPIC=/rgb/camera_1
+export LEROBOT_CAMERA_WIDTH=640
+export LEROBOT_CAMERA_HEIGHT=480
+export LEROBOT_CAMERA_FPS=30
+```
+
+## 🛠️ Troubleshooting
+
+### ROS2 Issues
+
+- **RTPS/SHM errors**: Run `./FIX/fix_rtps_shm_errors.sh`
+- **ROS2 daemon issues**: Run `./FIX/fix_ros2_daemon.sh`
+- **Cleanup**: Run `./FIX/cleanup_ros2.sh`
+
+### CUDA/PyTorch Issues
+
+- **CUDA compatibility**: Run `./FIX/fix_pytorch_cuda.sh`
+- **RTX 5090 setup**: See `./INSTALL/fix_rtx5090_venv.sh`
+
+### Kill All ROS2 Processes
+
+```bash
+./RUN/kill_all_ros2.sh
+```
+
+## 📚 Additional Documentation
+
+- [HOW TO RUN](HOW%20TO%20RUN) - Detailed usage instructions
+- [gradio_agent/README.md](gradio_agent/README.md) - Gradio agent documentation
+- [gradio_agent/POLICY_CONFIG_README.md](gradio_agent/POLICY_CONFIG_README.md) - Policy configuration guide
+- [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) - UV installation guide
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📝 License
+
+Apache 2.0 License - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- [LeRobot](https://github.com/huggingface/lerobot) - The base framework
+- [ROS2](https://docs.ros.org/en/humble/) - Robot Operating System 2
+- [MoveIt2](https://moveit.ros.org/) - Motion planning framework
+- [NVIDIA Isaac Sim](https://developer.nvidia.com/isaac-sim) - Simulation environment
