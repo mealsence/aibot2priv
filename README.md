@@ -81,13 +81,6 @@ The `lerobot` directory is a git submodule. When cloning:
 python3 isaac_franka_moveit_perception/move_to_joint_angles.py
 ```
 
-### 4. Load ROS Control and MoveIt
-
-```bash
-cd isaac_franka_moveit_perception
-source install/setup.bash
-ros2 launch perception_pipeline perception_pipeline_demo.launch.py
-```
 
 ## 📹 Data Collection
 
