@@ -107,6 +107,21 @@ Default scales: `linear = 0.05 m/s`, `angular = 0.1 rad/s`. No Python dependenci
 | `move_to_joint_angles.py` | Main script — validates, confirms, and moves the robot |
 | `spacemouse_cartesian_vel.py` | SpaceMouse teleop — Twist → Cartesian velocity (no IK) |
 | `real_robot_control.py` | Control module — ROS2 interface, gripper, arm control, diagnostics |
+| `launch_realsense_camera.sh` | Launch RealSense cameras → ROS2 topics (`/rgb/camera_1`, etc.) |
+| `realsense_ros2_publisher.py` | RealSense to ROS2 image publisher |
+
+### RealSense Camera (for data collection)
+
+For `lerobot-record` and `record_spacemouse_cartesian_vel_real.sh`, you need a camera publishing to `/rgb/camera_1`. Use the RealSense launch script:
+
+```bash
+# On workstation (separate terminal):
+cd REAL_ROBOT
+./launch_realsense_camera.sh
+```
+
+- **Config**: Edit `camera_config.yaml` with your camera serial numbers (run `lerobot-find-cameras realsense` to find them)
+- **Full guide**: See [CAMERA_SETUP.md](CAMERA_SETUP.md)
 
 ## Safety
 
