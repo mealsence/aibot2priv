@@ -22,6 +22,7 @@ from lerobot.robots import RobotConfig
 class ActionType(Enum):
     JOINT_POSITION = "joint_position"
     JOINT_TRAJECTORY = "joint_trajectory"
+    CARTESIAN_VELOCITY = "cartesian_velocity"
 
 
 class GripperActionType(Enum):
@@ -64,6 +65,9 @@ class ROS2InterfaceConfig:
     arm_controller_name: str = "arm_controller"
     position_controller_name: str = "position_controller"
     gripper_controller_name: str = "gripper_controller"
+
+    # Topic for Cartesian velocity control (ActionType.CARTESIAN_VELOCITY)
+    cartesian_velocity_topic: str = "/cartesian_twist_controller/cmd_vel"
 
 
 @dataclass
@@ -240,5 +244,44 @@ class PandaROSPositionConfig(PandaROSConfig):
             gripper_action_type=GripperActionType.ACTION,
             position_controller_name="panda_position_controller",
             gripper_controller_name="panda_hand_controller",
+        ),
+    )
+
+
+@RobotConfig.register_subclass("panda_ros_cartesian")
+@dataclass
+class PandaROSCartesianConfig(PandaROSConfig):
+    """Configuration for Franka Panda real robot data collection via Cartesian velocity control.
+
+    Uses CARTESIAN_VELOCITY action type: publishes geometry_msgs/Twist to
+    /cartesian_twist_controller/cmd_vel. The same controller used by spacemouse_cartesian_vel.py.
+
+    Action space: {vx, vy, vz, gripper.pos}  (Cartesian velocities + gripper)
+    Observation:  joint positions + camera (same as panda_ros)
+
+    Example:
+        lerobot-record --robot.type=panda_ros_cartesian --robot.id=my_panda ...
+    """
+
+    action_type: ActionType = ActionType.CARTESIAN_VELOCITY
+
+    ros2_interface: ROS2InterfaceConfig = field(
+        default_factory=lambda: ROS2InterfaceConfig(
+            arm_joint_names=[
+                "panda_joint1",
+                "panda_joint2",
+                "panda_joint3",
+                "panda_joint4",
+                "panda_joint5",
+                "panda_joint6",
+                "panda_joint7",
+            ],
+            gripper_joint_name="panda_finger_joint1",
+            base_link="panda_link0",
+            gripper_open_position=0.04,
+            gripper_close_position=0.0,
+            gripper_action_type=GripperActionType.ACTION,
+            gripper_controller_name="panda_hand_controller",
+            cartesian_velocity_topic="/cartesian_twist_controller/cmd_vel",
         ),
     )

@@ -118,7 +118,7 @@ Override defaults by setting these before running the scripts:
 | `LEROBOT_RESET_TIME_S` | Reset period between episodes | `60` |
 | `LEROBOT_DATASET_FPS` | Recording FPS | `30` |
 | `LEROBOT_RESUME` | Resume existing dataset | `true` or `false` |
-| `LEROBOT_DATASET_PUSH` | Push to HuggingFace Hub | `true` or `false` |
+| `LEROBOT_DATASET_PUSH` | Push to HuggingFace Hub after recording | `true` or `false` |
 | `LEROBOT_DATASET_VIDEO` | Encode video | `true` or `false` |
 | `LEROBOT_DISPLAY_DATA` | Show camera feed | `true` or `false` |
 
@@ -152,6 +152,36 @@ When `LEROBOT_CAMERA_TOPICS` and `LEROBOT_CAMERA_TOPIC` are not set, `record_spa
 | `LEROBOT_CAMERA_WIDTH` | Image width | `640` |
 | `LEROBOT_CAMERA_HEIGHT` | Image height | `480` |
 | `LEROBOT_CAMERA_FPS` | Camera FPS | `30` |
+
+---
+
+## Upload to Hugging Face
+
+### Option 1: During recording
+
+```bash
+LEROBOT_DATASET_PUSH=true ./DATA_COLLECTION/record_spacemouse_cartesian_vel_real.sh
+```
+
+### Option 2: After recording (push existing dataset)
+
+```bash
+# Login first (one-time)
+huggingface-cli login
+
+# Push most recent Real_Panda dataset (auto-detected)
+./DATA_COLLECTION/push_dataset_to_hub.sh
+
+# Or specify path and repo
+./DATA_COLLECTION/push_dataset_to_hub.sh ~/lerobot_datasets/Real_Panda_CartesianVel_SpaceMouse_20260226-132513 ases200q2/Real_Panda_CartesianVel_SpaceMouse
+```
+
+### Available scripts
+
+| Script | Purpose |
+|--------|---------|
+| `record_spacemouse_cartesian_vel_real.sh` | Record real robot data |
+| `push_dataset_to_hub.sh` | Push local dataset to Hugging Face Hub |
 
 ---
 

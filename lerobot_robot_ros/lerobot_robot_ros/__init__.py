@@ -1,5 +1,6 @@
 from .config import (
     AnninAR4Config,
+    PandaROSCartesianConfig,
     PandaROSConfig,
     PandaROSPositionConfig,
     ROS2Config,
@@ -8,6 +9,7 @@ from .config import (
 from .robot import (
     AnninAR4,
     PandaROS,
+    PandaROSCartesian,
     PandaROSPosition,
     ROS2Robot,
     SO101ROS,

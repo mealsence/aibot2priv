@@ -18,6 +18,7 @@ import time
 
 import rclpy
 from control_msgs.action import GripperCommand
+from geometry_msgs.msg import Twist
 from lerobot.utils.errors import DeviceNotConnectedError
 from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup  # Still used for gripper_action_client
@@ -62,6 +63,7 @@ class ROS2Interface:
         self.robot_node: Node | None = None
         self.pos_cmd_pub: Publisher | None = None
         self.traj_cmd_pub: Publisher | None = None
+        self.cart_vel_pub: Publisher | None = None
         self.gripper_action_client: ActionClient | None = None
         self.gripper_traj_pub: Publisher | None = None
         self.executor: Executor | None = None
@@ -82,6 +84,10 @@ class ROS2Interface:
         elif self.action_type == ActionType.JOINT_TRAJECTORY:
             self.traj_cmd_pub = self.robot_node.create_publisher(
                 JointTrajectory, f"/{self.config.arm_controller_name}/joint_trajectory", 10
+            )
+        elif self.action_type == ActionType.CARTESIAN_VELOCITY:
+            self.cart_vel_pub = self.robot_node.create_publisher(
+                Twist, self.config.cartesian_velocity_topic, 10
             )
 
         if self.config.gripper_action_type == GripperActionType.TRAJECTORY:
@@ -158,6 +164,34 @@ class ROS2Interface:
             msg = Float64MultiArray()
             msg.data = joint_positions
             self.pos_cmd_pub.publish(msg)
+
+    def send_cartesian_velocity_command(
+        self,
+        vx: float,
+        vy: float,
+        vz: float,
+        wx: float = 0.0,
+        wy: float = 0.0,
+        wz: float = 0.0,
+    ) -> None:
+        """Publish a Cartesian velocity command to the twist controller.
+
+        Args:
+            vx, vy, vz: Linear velocity components in m/s (robot base frame).
+            wx, wy, wz: Angular velocity components in rad/s (default: 0).
+        """
+        if not self.robot_node:
+            raise DeviceNotConnectedError("ROS2Interface is not connected. You need to call `connect()`.")
+        if self.cart_vel_pub is None:
+            raise DeviceNotConnectedError("Cartesian velocity publisher is not initialized.")
+        msg = Twist()
+        msg.linear.x = float(vx)
+        msg.linear.y = float(vy)
+        msg.linear.z = float(vz)
+        msg.angular.x = float(wx)
+        msg.angular.y = float(wy)
+        msg.angular.z = float(wz)
+        self.cart_vel_pub.publish(msg)
 
     def send_gripper_command(self, position: float, unnormalize: bool = True) -> bool:
         """
@@ -268,6 +302,14 @@ class ROS2Interface:
         if self.traj_cmd_pub:
             self.traj_cmd_pub.destroy()
             self.traj_cmd_pub = None
+        if self.cart_vel_pub:
+            # Publish zero velocity on disconnect for safety
+            try:
+                self.cart_vel_pub.publish(Twist())
+            except Exception:
+                pass
+            self.cart_vel_pub.destroy()
+            self.cart_vel_pub = None
         if self.gripper_action_client:
             self.gripper_action_client.destroy()
             self.gripper_action_client = None

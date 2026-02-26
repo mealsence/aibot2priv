@@ -22,7 +22,7 @@ from lerobot.robots import Robot
 from lerobot.robots.utils import ensure_safe_goal_position
 from lerobot.utils.errors import DeviceAlreadyConnectedError, DeviceNotConnectedError
 
-from .config import ActionType, ROS2Config
+from .config import ActionType, PandaROSCartesianConfig, ROS2Config
 from .ros_interface import ROS2Interface
 
 # Import ROS2Camera for type checking
@@ -183,3 +183,42 @@ class PandaROS(ROS2Robot):
 class PandaROSPosition(ROS2Robot):
     """Panda robot with ROS2 camera support and fast direct position control."""
     pass
+
+
+class PandaROSCartesian(ROS2Robot):
+    """Panda robot controlled via Cartesian velocity for real robot data collection.
+
+    Action space: {vx, vy, vz, gripper.pos}
+    Observation:  joint positions + camera (same as PandaROS)
+
+    Publishes geometry_msgs/Twist to /cartesian_twist_controller/cmd_vel.
+    Gripper is commanded only when the target position changes (avoids blocking).
+    """
+
+    config_class = PandaROSCartesianConfig
+    name = "panda_ros_cartesian"
+
+    def __init__(self, config: PandaROSCartesianConfig):
+        super().__init__(config)
+        self._gripper_target: float | None = None
+
+    @cached_property
+    def action_features(self) -> dict[str, type]:
+        return {"x.vel": float, "y.vel": float, "z.vel": float, "gripper.pos": float}
+
+    def send_action(self, action: dict[str, Any]) -> dict[str, Any]:
+        if not self.is_connected:
+            raise DeviceNotConnectedError(f"{self} is not connected.")
+
+        self.ros2_interface.send_cartesian_velocity_command(
+            vx=float(action.get("x.vel", 0.0)),
+            vy=float(action.get("y.vel", 0.0)),
+            vz=float(action.get("z.vel", 0.0)),
+        )
+
+        gripper_pos = float(action.get("gripper.pos", 0.0))
+        if self._gripper_target is None or abs(gripper_pos - self._gripper_target) > 0.4:
+            self.ros2_interface.send_gripper_command(gripper_pos)
+            self._gripper_target = gripper_pos
+
+        return action
