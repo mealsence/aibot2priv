@@ -14,10 +14,10 @@ Scripts for controlling a **real Franka Panda** robot via `franka_ros2`.
 
 ### 1. On the Control PC (192.168.1.2)
 
-Start `franka_ros2`:
+Start the Cartesian twist controller:
 ```bash
-source /opt/ros/humble/setup.bash
-ros2 launch franka_bringup franka.launch.py robot_ip:=192.168.1.101
+source /home/franka/franka_ros2_i2r/install/setup.bash
+ros2 launch franka_bringup cartesian_twist_controller.launch.py robot_ip:=192.168.1.101
 ```
 
 ### 2. On this Workstation
@@ -60,32 +60,52 @@ python move_to_joint_angles.py --joints -0.034 -0.436 -0.076 -2.581 -0.038 2.145
 python move_to_joint_angles.py --no-confirm --duration 5
 ```
 
-### SpaceMouse Teleoperation
+### SpaceMouse Teleoperation — Cartesian velocity (no IK)
 
-Control the robot with a 3Dconnexion SpaceMouse:
+Direct Cartesian velocity teleoperation. No IK — the SpaceMouse twist is scaled and sent straight to libfranka's Cartesian velocity interface. Simpler and lower-latency, but requires `CartesianTwistController` from `franka_ros2_i2r`.
 
-1. **Activate your environment** (venv or conda with lerobot):
-   ```bash
-   source .venv/bin/activate   # or: conda activate lerobot-ros
-   ```
-2. **Start SpaceMouse driver** (on this workstation):
-   ```bash
-   ros2 run spacenav spacenav_node --ros-args -r /spacenav/joy:=/joy
-   ```
-3. **Run spacemouse control**:
-   ```bash
-   cd REAL_ROBOT && python spacemouse_control.py
-   ```
-4. Move the SpaceMouse to control the end-effector. Button 0: close gripper, Button 1: open gripper.
+**Control PC** — switch to `cartesian_twist_controller.launch.py`:
+```bash
+# On control PC (192.168.1.2):
+source /home/franka/franka_ros2_i2r/install/setup.bash
+ros2 launch franka_bringup cartesian_twist_controller.launch.py robot_ip:=192.168.1.101
+```
 
-Requires `placo` for IK: `pip install placo` or `pip install lerobot[placo-dep]`.
+Verify the controller is active:
+```bash
+ros2 control list_controllers
+# Expected: cartesian_twist_controller  [active]
+```
+
+**Workstation** — start SpaceMouse driver (no remap needed, use default topic):
+```bash
+ros2 run spacenav spacenav_node
+```
+
+**Workstation** — run the bridge:
+```bash
+cd REAL_ROBOT && python spacemouse_cartesian_vel.py
+```
+
+Press **Button 0** on the SpaceMouse to toggle enable/disable. Move the SpaceMouse to control the end-effector in 6 DOF.
+
+| SpaceMouse axis | Robot motion |
+|---|---|
+| Push forward/back | X |
+| Push left/right | Y |
+| Push up/down | Z |
+| Tilt forward/back | Rx |
+| Tilt left/right | Ry |
+| Twist | Rz |
+
+Default scales: `linear = 0.05 m/s`, `angular = 0.1 rad/s`. No Python dependencies beyond ROS2.
 
 ## Files
 
 | File | Description |
 |---|---|
 | `move_to_joint_angles.py` | Main script — validates, confirms, and moves the robot |
-| `spacemouse_control.py` | SpaceMouse teleop — Joy → IK → joint commands |
+| `spacemouse_cartesian_vel.py` | SpaceMouse teleop — Twist → Cartesian velocity (no IK) |
 | `real_robot_control.py` | Control module — ROS2 interface, gripper, arm control, diagnostics |
 
 ## Safety
