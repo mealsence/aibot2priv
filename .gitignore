@@ -83,3 +83,8 @@ detected_objects/
 
 # Gradio
 .gradio/
+
+
+franka_ros2_i2r@franka
+.claude/worktrees/
+.claude/settings.local.json
