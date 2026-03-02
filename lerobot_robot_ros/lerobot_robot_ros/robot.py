@@ -192,15 +192,24 @@ class PandaROSCartesian(ROS2Robot):
     Observation:  joint positions + camera (same as PandaROS)
 
     Publishes geometry_msgs/Twist to /cartesian_twist_controller/cmd_vel.
-    Gripper is commanded only when the target position changes (avoids blocking).
+    Gripper is debounced to avoid rapid open-close oscillations from policy noise
+    that would abort in-progress Franka gripper actions (Command aborted).
     """
 
     config_class = PandaROSCartesianConfig
     name = "panda_ros_cartesian"
 
+    # Gripper debounce: require N consecutive steps with same binarized value before sending.
+    # At 30 fps, 6 steps = 200ms. Prevents policy from rapidly flipping close->open->close.
+    _GRIPPER_DEBOUNCE_STEPS = 6
+    _GRIPPER_MIN_INTERVAL_S = 0.5  # Minimum time between gripper commands
+
     def __init__(self, config: PandaROSCartesianConfig):
         super().__init__(config)
         self._gripper_target: float | None = None
+        self._gripper_consecutive: int = 0
+        self._gripper_last_binarized: float | None = None
+        self._gripper_last_send_time: float = 0.0
 
     @cached_property
     def action_features(self) -> dict[str, type]:
@@ -217,8 +226,27 @@ class PandaROSCartesian(ROS2Robot):
         )
 
         gripper_pos = float(action.get("gripper.pos", 0.0))
-        if self._gripper_target is None or abs(gripper_pos - self._gripper_target) > 0.4:
-            self.ros2_interface.send_gripper_command(gripper_pos)
-            self._gripper_target = gripper_pos
+        # Binarize: open (pos < 0.5) -> 0.0, closed (pos >= 0.5) -> 1.0
+        gripper_binarized = 1.0 if gripper_pos >= 0.5 else 0.0
+
+        now = time.perf_counter()
+        if self._gripper_last_binarized is None:
+            self._gripper_last_binarized = gripper_binarized
+            self._gripper_consecutive = 1
+        elif gripper_binarized == self._gripper_last_binarized:
+            self._gripper_consecutive += 1
+        else:
+            self._gripper_last_binarized = gripper_binarized
+            self._gripper_consecutive = 1
+
+        should_send = (
+            self._gripper_consecutive >= self._GRIPPER_DEBOUNCE_STEPS
+            and (self._gripper_target is None or abs(gripper_binarized - self._gripper_target) > 0.4)
+            and (now - self._gripper_last_send_time) >= self._GRIPPER_MIN_INTERVAL_S
+        )
+        if should_send:
+            self.ros2_interface.send_gripper_command(gripper_binarized)
+            self._gripper_target = gripper_binarized
+            self._gripper_last_send_time = now
 
         return action
