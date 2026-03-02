@@ -26,8 +26,9 @@ class ActionType(Enum):
 
 
 class GripperActionType(Enum):
-    TRAJECTORY = "trajectory"  # Use JointTrajectoryController for gripper
-    ACTION = "action"  # Use GripperActionClient
+    TRAJECTORY = "trajectory"    # JointTrajectoryController (topic)
+    ACTION = "action"            # control_msgs/action/GripperCommand
+    FRANKA_MOVE = "franka_move"  # franka_msgs/action/Move — total gap + speed
 
 
 @dataclass
@@ -56,15 +57,29 @@ class ROS2InterfaceConfig:
 
     gripper_open_position: float = 0.0
     gripper_close_position: float = 1.0
+    # Max effort (N) for GripperCommand (ACTION type). Must be > 0 for the gripper to move.
+    gripper_max_effort: float = 0.0
+    # Speed (m/s) for franka_msgs/action/Move and Grasp (FRANKA_MOVE type).
+    gripper_speed: float = 0.1
+    # Grasping force (N) for franka_msgs/action/Grasp used when closing.
+    gripper_grasp_force: float = 30.0
+    # epsilon_outer (m): how far from the target width still counts as a successful grasp.
+    # Set to gripper_open_position so any object width between 0 and fully open is accepted.
+    gripper_grasp_epsilon_outer: float = 0.08
 
     gripper_action_type: GripperActionType = GripperActionType.TRAJECTORY
 
     # Controller names for arm and gripper
-    # For Panda: use "panda_arm_controller" and "panda_hand_controller"
+    # For Panda sim (panda_ros/panda_ros_position): use "panda_arm_controller" / "panda_hand_controller"
+    # For Panda real (panda_ros_cartesian): use "panda_arm_controller" / "panda_gripper"
     # For other robots: typically "arm_controller" and "gripper_controller"
     arm_controller_name: str = "arm_controller"
     position_controller_name: str = "position_controller"
     gripper_controller_name: str = "gripper_controller"
+
+    # Action name for the gripper action server (appended to gripper_controller_name).
+    # franka_ros2 uses "gripper_action"; ros2_control typically uses "gripper_cmd".
+    gripper_action_name: str = "gripper_cmd"
 
     # Topic for Cartesian velocity control (ActionType.CARTESIAN_VELOCITY)
     cartesian_velocity_topic: str = "/cartesian_twist_controller/cmd_vel"
@@ -278,10 +293,19 @@ class PandaROSCartesianConfig(PandaROSConfig):
             ],
             gripper_joint_name="panda_finger_joint1",
             base_link="panda_link0",
-            gripper_open_position=0.04,
+            # franka_msgs/action/Move uses TOTAL gap (both fingers combined).
+            # max_width ≈ 0.0775 m; use 0.075 m to stay safely within range.
+            gripper_open_position=0.075,
+            # Target 0.0 m (fully closed). The Franka gripper's built-in force sensing
+            # stops the fingers automatically when they contact the GelSight sensors or
+            # an object — no mechanical damage. Mirrors test_gripper.py move_gripper(0.0).
             gripper_close_position=0.0,
-            gripper_action_type=GripperActionType.ACTION,
-            gripper_controller_name="panda_hand_controller",
+            gripper_speed=0.1,
+            gripper_grasp_force=30.0,
+            # Accept any grasp width up to fully open (object between fingers = success).
+            gripper_grasp_epsilon_outer=0.08,
+            gripper_action_type=GripperActionType.FRANKA_MOVE,
+            gripper_controller_name="panda_gripper",
             cartesian_velocity_topic="/cartesian_twist_controller/cmd_vel",
         ),
     )

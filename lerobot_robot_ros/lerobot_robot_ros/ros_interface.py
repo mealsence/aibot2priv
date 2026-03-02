@@ -21,13 +21,22 @@ from control_msgs.action import GripperCommand
 from geometry_msgs.msg import Twist
 from lerobot.utils.errors import DeviceNotConnectedError
 from rclpy.action import ActionClient
-from rclpy.callback_groups import ReentrantCallbackGroup  # Still used for gripper_action_client
+from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import Executor, SingleThreadedExecutor
 from rclpy.node import Node
 from rclpy.publisher import Publisher
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray
 from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+
+try:
+    from franka_msgs.action import Move as FrankaMove
+    from franka_msgs.action import Grasp as FrankaGrasp
+    _FRANKA_MSGS_AVAILABLE = True
+except ImportError:
+    _FRANKA_MSGS_AVAILABLE = False
+    FrankaMove = None
+    FrankaGrasp = None
 
 from .config import ActionType, GripperActionType, ROS2InterfaceConfig
 
@@ -65,6 +74,8 @@ class ROS2Interface:
         self.traj_cmd_pub: Publisher | None = None
         self.cart_vel_pub: Publisher | None = None
         self.gripper_action_client: ActionClient | None = None
+        self.gripper_move_client: ActionClient | None = None
+        self.gripper_grasp_client: ActionClient | None = None
         self.gripper_traj_pub: Publisher | None = None
         self.executor: Executor | None = None
         self.executor_thread: threading.Thread | None = None
@@ -94,11 +105,31 @@ class ROS2Interface:
             self.gripper_traj_pub = self.robot_node.create_publisher(
                 JointTrajectory, f"/{self.config.gripper_controller_name}/joint_trajectory", 10
             )
-        else:
+        elif self.config.gripper_action_type == GripperActionType.FRANKA_MOVE:
+            if not _FRANKA_MSGS_AVAILABLE:
+                raise ImportError(
+                    "franka_msgs is not installed. "
+                    "Install franka_ros2 or use GripperActionType.ACTION instead."
+                )
+            # Move: used for opening (position-only, no force semantics)
+            self.gripper_move_client = ActionClient(
+                self.robot_node,
+                FrankaMove,
+                f"/{self.config.gripper_controller_name}/move",
+                callback_group=ReentrantCallbackGroup(),
+            )
+            # Grasp: used for closing — handles object contact via epsilon tolerance
+            self.gripper_grasp_client = ActionClient(
+                self.robot_node,
+                FrankaGrasp,
+                f"/{self.config.gripper_controller_name}/grasp",
+                callback_group=ReentrantCallbackGroup(),
+            )
+        else:  # ACTION
             self.gripper_action_client = ActionClient(
                 self.robot_node,
                 GripperCommand,
-                f"/{self.config.gripper_controller_name}/gripper_cmd",
+                f"/{self.config.gripper_controller_name}/{self.config.gripper_action_name}",
                 callback_group=ReentrantCallbackGroup(),
             )
             self._goal_msg = GripperCommand.Goal()
@@ -116,6 +147,17 @@ class ROS2Interface:
         self.executor_thread = threading.Thread(target=self.executor.spin, daemon=True)
         self.executor_thread.start()
         time.sleep(3)  # Give some time to connect to services and receive messages
+
+        for gripper_client in filter(None, [
+            self.gripper_move_client,
+            self.gripper_grasp_client,
+            self.gripper_action_client,
+        ]):
+            if not gripper_client.wait_for_server(timeout_sec=5.0):
+                logger.warning(
+                    f"Gripper action server {gripper_client._action_name!r} not available. "
+                    "Gripper commands may fail until the server comes up."
+                )
 
         self.is_connected = True
 
@@ -222,26 +264,65 @@ class ROS2Interface:
             msg.points = [point]
             self.gripper_traj_pub.publish(msg)
             return True
-        else:
+        elif self.config.gripper_action_type == GripperActionType.FRANKA_MOVE:
+            midpoint = (self.config.gripper_open_position + self.config.gripper_close_position) / 2
+            if gripper_goal <= midpoint:
+                # Closing: use Grasp — handles object contact via epsilon tolerance.
+                # Move would abort with "Command aborted!" if the fingers stall on an object.
+                if not self.gripper_grasp_client:
+                    raise DeviceNotConnectedError("Gripper grasp client is not initialized.")
+                goal = FrankaGrasp.Goal()
+                goal.width = float(gripper_goal)
+                goal.speed = float(self.config.gripper_speed)
+                goal.force = float(self.config.gripper_grasp_force)
+                goal.epsilon.inner = 0.005
+                goal.epsilon.outer = float(self.config.gripper_grasp_epsilon_outer)
+                future = self.gripper_grasp_client.send_goal_async(goal)
+            else:
+                # Opening: use Move — purely position-based, no force needed.
+                if not self.gripper_move_client:
+                    raise DeviceNotConnectedError("Gripper move client is not initialized.")
+                goal = FrankaMove.Goal()
+                goal.width = float(gripper_goal)
+                goal.speed = float(self.config.gripper_speed)
+                future = self.gripper_move_client.send_goal_async(goal)
+            future.add_done_callback(self._gripper_goal_response_callback)
+            return True
+        else:  # ACTION
             if not self.gripper_action_client:
                 raise DeviceNotConnectedError("Gripper action client is not initialized.")
-
-            if not self.gripper_action_client.wait_for_server(timeout_sec=1.0):
-                logger.error("Gripper action server not available")
-                return False
-
             self._goal_msg.command.position = float(gripper_goal)
-            if not (resp := self.gripper_action_client.send_goal(self._goal_msg)):
-                logger.error("Failed to send gripper command")
-                return False
-            result = resp.result  # type: ignore  # ROS2 types available at runtime
-            if result.reached_goal:
-                return True
-            logger.error(
-                f"Gripper did not reach goal. stalled: {result.stalled}, "
-                f"effort: {result.effort}, position: {result.position}"
-            )
-            return False
+            self._goal_msg.command.max_effort = float(self.config.gripper_max_effort)
+            send_goal_future = self.gripper_action_client.send_goal_async(self._goal_msg)
+            send_goal_future.add_done_callback(self._gripper_goal_response_callback)
+            return True
+
+    def _gripper_goal_response_callback(self, future) -> None:
+        goal_handle = future.result()
+        if not goal_handle.accepted:
+            logger.error("Gripper goal rejected by action server")
+            return
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._gripper_result_callback)
+
+    def _gripper_result_callback(self, future) -> None:
+        result = future.result().result
+        if self.config.gripper_action_type == GripperActionType.FRANKA_MOVE:
+            # franka_msgs/action/Move result: success=True means reached width or stalled on object.
+            if not result.success:
+                logger.warning(f"Gripper move failed: {result.error}")
+        else:
+            # control_msgs/action/GripperCommand result
+            if result.stalled:
+                # Gripper contacted an object — successful grasp.
+                logger.debug(
+                    f"Gripper grasped object. effort: {result.effort:.3f}, position: {result.position:.4f}"
+                )
+            elif not result.reached_goal:
+                # Neither reached target nor stalled on object — unexpected failure.
+                logger.warning(
+                    f"Gripper did not reach goal. effort: {result.effort:.3f}, position: {result.position:.4f}"
+                )
 
     @property
     def joint_state(self) -> dict[str, dict[str, float]] | None:
@@ -313,6 +394,12 @@ class ROS2Interface:
         if self.gripper_action_client:
             self.gripper_action_client.destroy()
             self.gripper_action_client = None
+        if self.gripper_move_client:
+            self.gripper_move_client.destroy()
+            self.gripper_move_client = None
+        if self.gripper_grasp_client:
+            self.gripper_grasp_client.destroy()
+            self.gripper_grasp_client = None
         if self.gripper_traj_pub:
             self.gripper_traj_pub.destroy()
             self.gripper_traj_pub = None
