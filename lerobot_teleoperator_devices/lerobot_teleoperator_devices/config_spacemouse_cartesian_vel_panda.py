@@ -25,7 +25,7 @@ class SpaceMouseCartesianVelTeleopConfig(TeleoperatorConfig):
 
     # Axis inversion (match the working spacemouse_cartesian_vel.py frame mapping)
     invert_x: bool = True   # SpaceMouse x → robot y (inverted)
-    invert_y: bool = True   # SpaceMouse y → robot x (inverted)
+    invert_y: bool = False   # SpaceMouse y → robot x (inverted)
     invert_z: bool = False  # SpaceMouse z → robot z
 
     # Gripper control via buttons
