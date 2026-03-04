@@ -40,6 +40,10 @@ except ImportError:
 
 from .config import ActionType, GripperActionType, ROS2InterfaceConfig
 
+from tf2_ros import TransformException
+from tf2_ros.buffer import Buffer
+from tf2_ros.transform_listener import TransformListener
+
 logger = logging.getLogger(__name__)
 
 
@@ -158,7 +162,8 @@ class ROS2Interface:
                     f"Gripper action server {gripper_client._action_name!r} not available. "
                     "Gripper commands may fail until the server comes up."
                 )
-
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self.robot_node)
         self.is_connected = True
 
     def send_joint_position_command(self, joint_positions: list[float], unnormalize: bool = True) -> None:
@@ -421,3 +426,30 @@ class ROS2Interface:
             self.executor_thread = None
 
         self.is_connected = False
+    
+    def get_current_state(self) -> dict:
+        """Returns the current pose of the end-effector."""
+        try:
+            # Ensure the tf_buffer exists (it should be initialized in connect())
+            if not hasattr(self, 'tf_buffer'):
+                return {"pose": {"x": 0.0, "y": 0.0, "z": 1.0}}
+
+            now = rclpy.time.Time()
+            # Lookup transform from base (link0) to hand
+            trans = self.tf_buffer.lookup_transform(
+                'panda_link0', 
+                'panda_hand', 
+                now,
+                timeout=rclpy.duration.Duration(seconds=0.1)
+            )
+            
+            return {
+                "pose": {
+                    "x": trans.transform.translation.x,
+                    "y": trans.transform.translation.y,
+                    "z": trans.transform.translation.z
+                }
+            }
+        except Exception as e:
+            # If TF fails, we return a safe high Z so the robot doesn't freeze
+            return {"pose": {"x": 0.0, "y": 0.0, "z": 1.0}}

@@ -194,6 +194,8 @@ sleep 3
 # ============================================================================
 
 exec lerobot-record \
+  --robot.discover_packages_path=lerobot_robot_ros \
+  --teleop.discover_packages_path=lerobot_teleoperator_devices \
   --robot.type="${ROBOT_TYPE}" \
   --robot.id="${ROBOT_ID}" \
   --teleop.type="${TELEOP_TYPE}" \

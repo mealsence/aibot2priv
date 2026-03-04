@@ -218,11 +218,25 @@ class PandaROSCartesian(ROS2Robot):
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
+        
+        current_state = self.ros2_interface.get_current_state()
+        current_z = current_state["pose"]["z"] 
+
+        # 2. Extract velocities into local variables
+        vx = float(action.get("x.vel", 0.0))
+        vy = float(action.get("y.vel", 0.0))
+        vz = float(action.get("z.vel", 0.0))
+
+        # 3. Apply Safety Clamp (using a 2cm buffer above the table)
+        if current_z <= 0.125 and vz < 0:
+            print(current_state)
+            print(f"Safety Trigger: Clamping Z velocity {vz} -> 0.0 at height {current_z:.4f}")
+            vz = 0.0
 
         self.ros2_interface.send_cartesian_velocity_command(
             vx=float(action.get("x.vel", 0.0)),
             vy=float(action.get("y.vel", 0.0)),
-            vz=float(action.get("z.vel", 0.0)),
+            vz=float(vz),
         )
 
         gripper_pos = float(action.get("gripper.pos", 0.0))

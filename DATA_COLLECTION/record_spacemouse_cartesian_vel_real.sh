@@ -116,6 +116,8 @@ TELEOP_LINEAR_SCALE="${LEROBOT_TELEOP_LINEAR_SCALE:-0.05}"
 TELEOP_DEAD_ZONE="${LEROBOT_TELEOP_DEAD_ZONE:-0.1}"
 
 exec lerobot-record \
+  --robot.discover_packages_path=lerobot_robot_ros \
+  --teleop.discover_packages_path=lerobot_teleoperator_devices \
   --robot.type=panda_ros_cartesian \
   --robot.id="${ROBOT_ID}" \
   --teleop.type=spacemouse_cartesian_vel_panda \
