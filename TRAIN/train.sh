@@ -69,7 +69,7 @@ export PYTORCH_ALLOC_CONF=expandable_segments:True
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Set model repo ID with timestamp and policy type
-MODEL_REPO_ID="${HF_USER:-ases200q2}/Isaac_panda_pick_cube_${POLICY_TYPE}_${TIMESTAMP}"
+MODEL_REPO_ID="${HF_USER:-ases200q2}/Real_Panda_PickScrewdriver_finetune_${POLICY_TYPE}_${TIMESTAMP}"
 
 # Determine training command based on policy type
 # PI05 uses custom script with 8-bit optimizer for memory efficiency
@@ -85,17 +85,17 @@ fi
 
 # Add common training arguments
 TRAIN_CMD+=(
-  --dataset.repo_id="ases200q2/Isaac_Panda_PickCube_SpaceMouse_EE_50eps"
+  --dataset.repo_id="TInkybala/Real_Panda_CartesianVel_Screwdriver_3"
   --dataset.streaming=false
   --dataset.video_backend=pyav
   --output_dir="outputs/train/${MODEL_REPO_ID//\//_}"
-  --job_name="panda_pick_cube_${POLICY_TYPE}"
+  --job_name="panda_pick_screwdriver_${POLICY_TYPE}"
   --policy.device=cuda
-  --wandb.enable=true
+  --wandb.enable=false
   --policy.push_to_hub=true
   --policy.repo_id="${MODEL_REPO_ID}"
-  --batch_size=8
-  --steps=3000
+  --batch_size=16
+  --steps=20000
 )
 
 # Add policy-specific configuration
@@ -105,7 +105,7 @@ if [[ "${POLICY_TYPE}" == "smolvla" ]]; then
   # Alternatively, use --policy.path=lerobot/smolvla_base for finetuning
   TRAIN_CMD+=(--policy.type=smolvla)
   # Optionally use pretrained base (uncomment to use):
-  # TRAIN_CMD+=(--policy.path=lerobot/smolvla_base)
+  #TRAIN_CMD+=(--policy.path=lerobot/smolvla_base)
 elif [[ "${POLICY_TYPE}" == "pi05" ]]; then
   # PI05: Fine-tuning from pretrained base model (recommended)
   # Uses custom training script with 8-bit AdamW optimizer for memory efficiency

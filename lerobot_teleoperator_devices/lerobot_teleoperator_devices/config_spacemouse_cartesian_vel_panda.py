@@ -19,6 +19,7 @@ class SpaceMouseCartesianVelTeleopConfig(TeleoperatorConfig):
 
     # Scaling factors (matching spacemouse_cartesian_vel.py defaults)
     linear_scale: float = 0.05   # m/s per unit SpaceMouse input
+    angular_scale: float = 0.1   # rad/s per unit SpaceMouse input
 
     # Deadzone applied per-axis before scaling (matching spacemouse_cartesian_vel.py)
     dead_zone: float = 0.1
@@ -27,6 +28,9 @@ class SpaceMouseCartesianVelTeleopConfig(TeleoperatorConfig):
     invert_x: bool = True   # SpaceMouse x → robot y (inverted)
     invert_y: bool = False   # SpaceMouse y → robot x (inverted)
     invert_z: bool = False  # SpaceMouse z → robot z
+    invert_ang_x: bool = False  # SpaceMouse ang_x → robot roll
+    invert_ang_y: bool = True  # SpaceMouse ang_y → robot pitch
+    invert_ang_z: bool = False  # SpaceMouse ang_z → robot yaw
 
     # Gripper control via buttons
     # Button 0 (left): close gripper → gripper.pos = 1.0 (normalized closed)

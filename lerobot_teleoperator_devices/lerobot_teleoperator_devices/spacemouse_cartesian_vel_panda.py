@@ -140,6 +140,7 @@ class SpaceMouseCartesianVelTeleop(Teleoperator):
             if self._latest_joy is not None and len(self._latest_joy.axes) >= 3:
                 axes = list(self._latest_joy.axes) + [0.0] * (6 - len(self._latest_joy.axes))
                 raw_x, raw_y, raw_z = axes[:3]
+                raw_ang_x, raw_ang_y, raw_ang_z = axes[3:6]
 
                 # Frame mapping matching spacemouse_cartesian_vel.py:
                 #   SpaceMouse x → robot y (invert_y)
@@ -148,18 +149,34 @@ class SpaceMouseCartesianVelTeleop(Teleoperator):
                 mapped_x = (-raw_y if self.config.invert_y else raw_y)
                 mapped_y = (-raw_x if self.config.invert_x else raw_x)
                 mapped_z = (-raw_z if self.config.invert_z else raw_z)
+                mapped_ang_x = (-raw_ang_y if self.config.invert_ang_x else raw_ang_y)
+                mapped_ang_y = (-raw_ang_x if self.config.invert_ang_y else raw_ang_x)
+                mapped_ang_z = (-raw_ang_z if self.config.invert_ang_z else raw_ang_z)
 
                 mapped_x = _apply_deadzone(mapped_x, self.config.dead_zone)
                 mapped_y = _apply_deadzone(mapped_y, self.config.dead_zone)
                 mapped_z = _apply_deadzone(mapped_z, self.config.dead_zone)
+                mapped_ang_x = _apply_deadzone(mapped_ang_x, self.config.dead_zone)
+                mapped_ang_y = _apply_deadzone(mapped_ang_y, self.config.dead_zone)
+                mapped_ang_z = _apply_deadzone(mapped_ang_z, self.config.dead_zone)
 
                 vx = mapped_x * self.config.linear_scale
                 vy = mapped_y * self.config.linear_scale
                 vz = mapped_z * self.config.linear_scale
+                v_ang_x = mapped_ang_x * self.config.angular_scale
+                v_ang_y = mapped_ang_y * self.config.angular_scale
+                v_ang_z = mapped_ang_z * self.config.angular_scale
 
             gripper_pos = self._gripper_pos
 
-        action: dict[str, Any] = {"x.vel": float(vx), "y.vel": float(vy), "z.vel": float(vz)}
+        action: dict[str, Any] = {
+            "x.vel": float(vx),
+            "y.vel": float(vy),
+            "z.vel": float(vz),
+            "x.ang_vel": float(v_ang_x),
+            "y.ang_vel": float(v_ang_y),
+            "z.ang_vel": float(v_ang_z)
+        }
         if self.config.use_gripper:
             action["gripper.pos"] = float(gripper_pos)
         return action

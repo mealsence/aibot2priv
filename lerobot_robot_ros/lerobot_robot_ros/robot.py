@@ -226,8 +226,11 @@ class PandaROSCartesian(ROS2Robot):
         vx = float(action.get("x.vel", 0.0))
         vy = float(action.get("y.vel", 0.0))
         vz = float(action.get("z.vel", 0.0))
+        v_ang_x = float(action.get("x.ang_vel", 0.0))
+        v_ang_y = float(action.get("y.ang_vel", 0.0))
+        v_ang_z = float(action.get("z.ang_vel", 0.0))
 
-        # 3. Apply Safety Clamp (using a 2cm buffer above the table)
+        # 3. Apply Safety Clamp to not hit table
         if current_z <= 0.125 and vz < 0:
             print(current_state)
             print(f"Safety Trigger: Clamping Z velocity {vz} -> 0.0 at height {current_z:.4f}")
@@ -237,6 +240,9 @@ class PandaROSCartesian(ROS2Robot):
             vx=float(action.get("x.vel", 0.0)),
             vy=float(action.get("y.vel", 0.0)),
             vz=float(vz),
+            wx=v_ang_x,
+            wy=v_ang_y,
+            wz=v_ang_z,
         )
 
         gripper_pos = float(action.get("gripper.pos", 0.0))

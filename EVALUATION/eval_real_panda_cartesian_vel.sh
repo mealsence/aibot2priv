@@ -122,7 +122,7 @@ echo "Evaluation dataset will be saved to: ${EVAL_DATASET_ROOT}"
 # ============================================================================
 
 NUM_EVAL_EPISODES="${LEROBOT_EVAL_NUM_EPISODES:-10}"
-SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick up screwdriver}"
+SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick up red screwdriver}"
 
 # Robot: panda_ros_cartesian (Cartesian velocity control via /cartesian_twist_controller/cmd_vel)
 ROBOT_ID="${LEROBOT_ROBOT_ID:-my_panda_real}"

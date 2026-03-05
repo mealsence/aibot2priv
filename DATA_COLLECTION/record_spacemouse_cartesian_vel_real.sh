@@ -65,8 +65,8 @@ activate_python_env() {
 
 activate_python_env
 
-#/home/student/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_20260303-111147/
-DATASET_BASE_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_2}"
+#/home/student/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_3_20260305-151000/
+DATASET_BASE_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_3_20260305-151000/}"
 RESUME_INPUT="${LEROBOT_RESUME:-false}"
 
 case "${RESUME_INPUT}" in

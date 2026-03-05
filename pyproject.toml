@@ -24,7 +24,6 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: Scientific/Engineering :: Robotics",
 ]
 
 # =============================================================================
@@ -67,7 +66,7 @@ dependencies = [
     # --- Visualization ---
     "matplotlib>=3.8.0,<4.0.0",
     "transforms3d>=0.4.2",
-    "rerun-sdk>=0.24.0,<0.27.0",
+    "rerun-sdk>=0.23.0,<0.24.0",
     
     # --- Utilities ---
     "pyyaml>=6.0",
@@ -192,4 +191,7 @@ addopts = "-v --tb=short"
 python_version = "3.10"
 ignore_missing_imports = true
 follow_imports = "skip"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
