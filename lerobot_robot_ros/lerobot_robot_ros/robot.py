@@ -210,36 +210,67 @@ class PandaROSCartesian(ROS2Robot):
         self._gripper_consecutive: int = 0
         self._gripper_last_binarized: float | None = None
         self._gripper_last_send_time: float = 0.0
+        # Velocity smoothing state (ADDED: smoothing for velocity commands)
+        self._last_vel = {k: 0.0 for k in ["x.vel", "y.vel", "z.vel", "x.ang_vel", "y.ang_vel", "z.ang_vel"]}
+        self._vel_smoothing_alpha = 0.2  # Smoothing factor (0=slow, 1=off)
 
     @cached_property
     def action_features(self) -> dict[str, type]:
-        return {"x.vel": float, "y.vel": float, "z.vel": float, "gripper.pos": float}
+        return {"x.vel": float, "y.vel": float, "z.vel": float, "gripper.pos": float, "x.ang_vel": float, "y.ang_vel": float, "z.ang_vel": float}
 
     def send_action(self, action: dict[str, Any]) -> dict[str, Any]:
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
-        
+
         current_state = self.ros2_interface.get_current_state()
-        current_z = current_state["pose"]["z"] 
+        current_z = current_state["pose"]["z"]
 
-        # 2. Extract velocities into local variables
-        vx = float(action.get("x.vel", 0.0))
-        vy = float(action.get("y.vel", 0.0))
-        vz = float(action.get("z.vel", 0.0))
-        v_ang_x = float(action.get("x.ang_vel", 0.0))
-        v_ang_y = float(action.get("y.ang_vel", 0.0))
-        v_ang_z = float(action.get("z.ang_vel", 0.0))
 
-        # 3. Apply Safety Clamp to not hit table
+        # --- ORIGINAL (commented out for reference) ---
+        # vx = float(action.get("x.vel", 0.0))
+        # vy = float(action.get("y.vel", 0.0))
+        # vz = float(action.get("z.vel", 0.0))
+        # v_ang_x = float(action.get("x.ang_vel", 0.0))
+        # v_ang_y = float(action.get("y.ang_vel", 0.0))
+        # v_ang_z = float(action.get("z.ang_vel", 0.0))
+        # if current_z <= 0.125 and vz < 0:
+        #     print(current_state)
+        #     print(f"Safety Trigger: Clamping Z velocity {vz} -> 0.0 at height {current_z:.4f}")
+        #     vz = 0.0
+        # self.ros2_interface.send_cartesian_velocity_command(
+        #     vx=float(action.get("x.vel", 0.0)),
+        #     vy=float(action.get("y.vel", 0.0)),
+        #     vz=float(vz),
+        #     wx=v_ang_x,
+        #     wy=v_ang_y,
+        #     wz=v_ang_z,
+        # )
+
+        # --- ADDED: Velocity smoothing (EMA) ---
+        smoothed = {}
+        for k in self._last_vel:
+            raw = float(action.get(k, 0.0))
+            last = self._last_vel[k]
+            alpha = self._vel_smoothing_alpha
+            smoothed[k] = alpha * raw + (1 - alpha) * last
+            self._last_vel[k] = smoothed[k]
+
+        vx = smoothed["x.vel"]
+        vy = smoothed["y.vel"]
+        vz = smoothed["z.vel"]
+        v_ang_x = smoothed["x.ang_vel"]
+        v_ang_y = smoothed["y.ang_vel"]
+        v_ang_z = smoothed["z.ang_vel"]
+
         if current_z <= 0.125 and vz < 0:
             print(current_state)
             print(f"Safety Trigger: Clamping Z velocity {vz} -> 0.0 at height {current_z:.4f}")
             vz = 0.0
 
         self.ros2_interface.send_cartesian_velocity_command(
-            vx=float(action.get("x.vel", 0.0)),
-            vy=float(action.get("y.vel", 0.0)),
-            vz=float(vz),
+            vx=vx,
+            vy=vy,
+            vz=vz,
             wx=v_ang_x,
             wy=v_ang_y,
             wz=v_ang_z,

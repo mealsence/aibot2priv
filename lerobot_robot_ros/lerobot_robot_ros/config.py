@@ -161,20 +161,26 @@ def _get_camera_config() -> dict[str, CameraConfig]:
         from .ros2_camera import ROS2CameraConfig
         from lerobot.cameras.configs import ColorMode
 
-        camera_topic = os.getenv("LEROBOT_CAMERA_TOPIC", "/rgb/camera_1")
+        camera_count = int(os.getenv("LEROBOT_CAMERA_COUNT", "1"))
         camera_width = int(os.getenv("LEROBOT_CAMERA_WIDTH", "640"))
         camera_height = int(os.getenv("LEROBOT_CAMERA_HEIGHT", "480"))
         camera_fps = int(os.getenv("LEROBOT_CAMERA_FPS", "30"))
+        configs = {}
 
-        return {
-            "camera_1": ROS2CameraConfig(
-                topic=camera_topic,
+        for i in range(camera_count):
+            topic_env_varname = f"LEROBOT_CAMERA_{i+1}_TOPIC"
+            default_topic = f"/rgb/camera_{i+1}"
+            topic = os.getenv(topic_env_varname, default_topic)
+
+            configs[f"camera_{i+1}"] = ROS2CameraConfig(
+                topic=topic,
                 width=camera_width,
                 height=camera_height,
                 fps=camera_fps,
                 color_mode=ColorMode.RGB,
             )
-        }
+        return configs
+        
     except ImportError:
         # ROS2Camera not available, return empty dict
         return {}
