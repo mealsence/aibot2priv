@@ -335,6 +335,11 @@ class ROS2Interface:
         return self._last_joint_state
 
     def _joint_state_callback(self, msg: "JointState") -> None:
+        if len(msg.name) != len(msg.position) or len(msg.name) != len(msg.velocity):
+            self.robot_node.get_logger().debug(
+                "Malformed JointState message detected (likely switching controllers). Dropping frame."
+            )
+            return
         self._last_joint_state = self._last_joint_state or {}
         positions = {}
         velocities = {}
