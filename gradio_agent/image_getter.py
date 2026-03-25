@@ -93,24 +93,31 @@ def capture_image(image_provider, timeout_sec=5.0, require_view_matrix=False):
     while True:
         rclpy.spin_once(image_provider, timeout_sec=0.05)
 
-        # Need both frames present
+        # If both are present, require both to be new
         if image_provider.latest_color and image_provider.latest_depth:
             new_color = _stamp_as_int(image_provider.latest_color)
             new_depth = _stamp_as_int(image_provider.latest_depth)
-
-            # First-ever capture OR both stamps advanced?
             if (last_color_stamp is None or new_color != last_color_stamp) and \
                (last_depth_stamp is None or new_depth != last_depth_stamp):
-                # Check if timestamps are within 5 seconds
-                if abs(new_color - new_depth) <= 5_000_000_000:  # 5 seconds in nanoseconds
-                    break    # we've got a fresh pair
+                if abs(new_color - new_depth) <= 5_000_000_000:
+                    break
+        # If only RGB is present, allow just RGB
+        elif image_provider.latest_color and image_provider.latest_depth is None:
+            new_color = _stamp_as_int(image_provider.latest_color)
+            if last_color_stamp is None or new_color != last_color_stamp:
+                break
 
         if time.time() - start_time > timeout_sec:
-            raise TimeoutError("Timeout waiting for NEW RGB and depth frames")
+            raise TimeoutError("Timeout waiting for NEW RGB frame" if image_provider.latest_depth is None else "Timeout waiting for NEW RGB and depth frames")
 
     # ---------- convert & return ----------
     pil_rgb  = image_provider.get_latest_rgb()
-    depth_np = image_provider.get_latest_depth()
+    depth_np = None
+    if image_provider.latest_depth is not None:
+        try:
+            depth_np = image_provider.get_latest_depth()
+        except Exception:
+            depth_np = None
 
     # Retrieve the view matrix using latest available transform (if required)
     view_matrix = None
@@ -145,22 +152,20 @@ def capture_image(image_provider, timeout_sec=5.0, require_view_matrix=False):
         print("Skipping view matrix retrieval (not required)")
 
 
-    # visualize the depth image using matplotlib and save for debug
-    depth_img = np.nan_to_num(depth_np, nan=0.0)
-
-    # Auto-create detected_objects directory if it doesn't exist
-    detected_objects_dir = 'detected_objects'
-    if not os.path.exists(detected_objects_dir):
-        os.makedirs(detected_objects_dir)
-        print(f"Created directory: {detected_objects_dir}")
-
-    plt.figure(figsize=(8, 6))
-    plt.imshow(depth_img, cmap='plasma', vmin=0, vmax=10)  # Adjust vmax as needed for your depth range
-    plt.colorbar(label='Depth (meters)')
-    plt.title('Depth Image (raw 32FC1)')
-    plt.axis('off')  # Hide axis ticks/labels if you want
-    plt.tight_layout()
-    plt.savefig('detected_objects/depth_image_matplotlib.png')
+    # visualize the depth image using matplotlib and save for debug, only if depth is available
+    if depth_np is not None:
+        depth_img = np.nan_to_num(depth_np, nan=0.0)
+        detected_objects_dir = 'detected_objects'
+        if not os.path.exists(detected_objects_dir):
+            os.makedirs(detected_objects_dir)
+            print(f"Created directory: {detected_objects_dir}")
+        plt.figure(figsize=(8, 6))
+        plt.imshow(depth_img, cmap='plasma', vmin=0, vmax=10)
+        plt.colorbar(label='Depth (meters)')
+        plt.title('Depth Image (raw 32FC1)')
+        plt.axis('off')
+        plt.tight_layout()
+        plt.savefig('detected_objects/depth_image_matplotlib.png')
     return pil_rgb, depth_np, view_matrix
 
 

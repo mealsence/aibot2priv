@@ -62,6 +62,7 @@ class CameraConfig:
     height: int = 480
     fps: int = 30
     color_mode: str = "RGB"  # RGB or BGR
+    use_depth: bool = False  # Enable depth capture
 
 
 class RealSenseCamera:
@@ -91,6 +92,16 @@ class RealSenseCamera:
                 rs.format.rgb8,  # Always capture as RGB
                 self.config.fps
             )
+
+            # Optionally configure depth stream
+            if getattr(self.config, 'use_depth', False):
+                self.config_rs.enable_stream(
+                    rs.stream.depth,
+                    self.config.width,
+                    self.config.height,
+                    rs.format.z16,
+                    self.config.fps
+                )
 
             # Start pipeline
             self.profile = self.pipeline.start(self.config_rs)
@@ -157,8 +168,10 @@ class RealSensePublisherNode(Node):
     def __init__(self, cameras: dict[str, CameraConfig]):
         super().__init__('realsense_camera_publisher')
 
+
         self.cameras: dict[str, RealSenseCamera] = {}
         self.camera_publishers: dict[str, Any] = {}
+        self.depth_publishers: dict[str, Any] = {}
         self.running = False
         self.threads: list[threading.Thread] = []
 
@@ -168,13 +181,23 @@ class RealSensePublisherNode(Node):
             if camera.connect():
                 self.cameras[cam_name] = camera
 
-                # Create ROS2 publisher
+                # Create ROS2 publisher for color
                 self.camera_publishers[cam_name] = self.create_publisher(
                     Image,
                     cam_config.topic,
                     10
                 )
                 logger.info(f"Created publisher for {cam_name} on topic {cam_config.topic}")
+
+                # Create ROS2 publisher for depth if enabled
+                if getattr(cam_config, 'use_depth', False):
+                    depth_topic = f"/depth/{cam_name}"
+                    self.depth_publishers[cam_name] = self.create_publisher(
+                        Image,
+                        depth_topic,
+                        10
+                    )
+                    logger.info(f"Created depth publisher for {cam_name} on topic {depth_topic}")
 
         if not self.cameras:
             logger.error("No cameras connected successfully!")
@@ -195,18 +218,28 @@ class RealSensePublisherNode(Node):
 
         logger.info(f"Started {len(self.threads)} camera publisher threads")
 
+
     def _publish_loop(self, cam_name: str):
         """Publisher loop for a single camera."""
         camera = self.cameras[cam_name]
         publisher = self.camera_publishers[cam_name]
+        depth_publisher = self.depth_publishers.get(cam_name)
         frame_count = 0
         last_log_time = time.time()
 
+        import numpy as np
+        try:
+            from cv_bridge import CvBridge
+            bridge = CvBridge()
+        except ImportError:
+            bridge = None
+
         while self.running and rclpy.ok():
+            # Get color frame
             success, frame_data = camera.get_frame()
 
             if success and frame_data is not None:
-                # Create ROS2 Image message
+                # Create ROS2 Image message for color
                 msg = Image()
                 msg.header.stamp = self.get_clock().now().to_msg()
                 msg.header.frame_id = cam_name
@@ -216,9 +249,35 @@ class RealSensePublisherNode(Node):
                 msg.step = frame_data.shape[1] * 3  # Width * 3 channels
                 msg.data = frame_data.tobytes()
 
-                # Publish
+                # Publish color
                 publisher.publish(msg)
                 frame_count += 1
+
+                # Publish depth if enabled
+                if depth_publisher and getattr(camera.config, 'use_depth', False):
+                    try:
+                        frames = camera.pipeline.wait_for_frames(timeout_ms=500)
+                        depth_frame = frames.get_depth_frame()
+                        if depth_frame:
+                            depth_image = np.asanyarray(depth_frame.get_data())
+                            if bridge:
+                                depth_msg = bridge.cv2_to_imgmsg(depth_image, encoding="16UC1")
+                                depth_msg.header.stamp = msg.header.stamp
+                                depth_msg.header.frame_id = cam_name
+                                depth_publisher.publish(depth_msg)
+                            else:
+                                # Fallback: manual message
+                                depth_msg = Image()
+                                depth_msg.header.stamp = msg.header.stamp
+                                depth_msg.header.frame_id = cam_name
+                                depth_msg.height = depth_image.shape[0]
+                                depth_msg.width = depth_image.shape[1]
+                                depth_msg.encoding = "16UC1"
+                                depth_msg.step = depth_image.shape[1] * 2
+                                depth_msg.data = depth_image.tobytes()
+                                depth_publisher.publish(depth_msg)
+                    except Exception as e:
+                        logger.warning(f"Error publishing depth for {cam_name}: {e}")
 
                 # Log FPS every 5 seconds
                 current_time = time.time()
@@ -284,7 +343,8 @@ def load_camera_config_from_yaml(config_path: str) -> dict[str, CameraConfig]:
                 width=cam_config.get('width', 640),
                 height=cam_config.get('height', 480),
                 fps=cam_config.get('fps', 30),
-                color_mode=cam_config.get('color_mode', 'RGB')
+                color_mode=cam_config.get('color_mode', 'RGB'),
+                use_depth=cam_config.get('use_depth', False)
             )
 
         return cameras
@@ -310,7 +370,8 @@ def load_camera_config_from_json(json_str: str) -> dict[str, CameraConfig]:
                 width=cam_config.get('width', 640),
                 height=cam_config.get('height', 480),
                 fps=cam_config.get('fps', 30),
-                color_mode=cam_config.get('color_mode', 'RGB')
+                color_mode=cam_config.get('color_mode', 'RGB'),
+                use_depth=cam_config.get('use_depth', False)
             )
 
         return cameras

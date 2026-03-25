@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# TODO: UPDATE THIS SCRIPT TO USE CONTROLLER_SWTCHING INSTEAD OF STOPPING AND STARTING CONTROLLER
 
 # Set these to your remote controller computer's SSH info
 REMOTE_USER="franka"

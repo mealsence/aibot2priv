@@ -17,6 +17,7 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray
 from rclpy.node import Node
+import subprocess
 
 from world_model import WorldModel
 
@@ -39,6 +40,7 @@ try:
     from lerobot_robot_ros import (
         PandaROSPositionConfig,
         PandaROSConfig,
+        PandaROSCartesianConfig
     )
     LEROBOT_AVAILABLE = True
     ROBOT_AVAILABLE = True
@@ -590,6 +592,7 @@ def preload_image_provider() -> bool:
             return False
         
         # Import and create image provider
+        
         from image_getter import ImageProvider
         
         # Create a unique node name to avoid conflicts
@@ -838,18 +841,17 @@ def get_current_arm_position() -> Dict:
 
 
 def control_arm_home_position() -> Dict:
-    """Move the robot arm to the predefined home position."""
-    print("🏠 Moving robot arm to home position...")
+    session_name = "robot_console"
+    script_name = "switch_controllers.sh"
+    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+    controller_arg = "home"
+
     try:
-        home_positions = [-0.159, 0.302, -0.093, -2.255, 0.047, 2.555, 0.498]
-        print(f"📍 Moving arm TO home position: {[f'{pos:.3f}' for pos in home_positions]}")
-        success = _arm_controller._send_arm_command(home_positions)
-        if success:
-            return {"success": True, "action": "homed", "message": "Robot arm moved to home position successfully", "position": "home", "joint_angles": home_positions}
-        else:
-            return {"success": False, "error": "Failed to move arm to home position via ROS2", "position": "home", "joint_angles": home_positions}
+        subprocess.run(["bash", script_path, controller_arg])
+        return {"success": True, "message": "Homing command sent to console"}
     except Exception as e:
-        return {"success": False, "error": f"Arm home position control failed: {str(e)}"}
+        return {"success": False, "error": str(e)}
+
 
 
 def scan_environment() -> Dict:
@@ -1305,6 +1307,7 @@ def preload_vla_policy(
                 default=None,
                 config=config
             )
+        
 
         print(f"🔄 Pre-loading VLA policy: {policy_path}")
         print(f"   Type: {policy_type}, Device: {device or 'auto-detect'}")
@@ -1365,15 +1368,15 @@ def _load_policy(
     
     # Get policy class
     policy_class = get_policy_class(policy_type)
+
     
     # Load pretrained policy
     try:
-        policy = policy_class.from_pretrained(policy_path)
+        policy = policy_class.from_pretrained(policy_path, compile_model=False)
         policy.to(device)
         policy.eval()
     except Exception as e:
         raise RuntimeError(f"Failed to load policy from {policy_path}: {e}")
-    
     # Load preprocessor and postprocessor
     try:
         preprocessor, postprocessor = make_pre_post_processors(
@@ -1432,6 +1435,8 @@ def _setup_robot(robot_type: str = "panda_ros_position", robot_id: str = "my_pan
         robot_cfg = PandaROSPositionConfig(id=robot_id)
     elif robot_type in ("panda_ros", "panda_ros_isaac"):
         robot_cfg = PandaROSConfig(id=robot_id)
+    elif robot_type in ("panda_ros_cartesian"):
+        robot_cfg = PandaROSCartesianConfig(id=robot_id)
     else:
         raise ValueError(
             f"Unsupported robot type: {robot_type}. "
@@ -1634,8 +1639,8 @@ def execute_vla_task(
     task_description: str,
     num_steps: int = 300,
     policy_path: Optional[str] = None,
-    policy_type: str = "act",
-    robot_type: str = "panda_ros_position",
+    policy_type: str = "pi0", # for some reason its not detecting the policy_type; override for now
+    robot_type: str = "panda_ros_cartesian", # same
     robot_id: str = "my_panda_follower",
     device: Optional[str] = None,
     fps: int = 30,  # Control frequency in Hz (must match training!)
@@ -1702,7 +1707,21 @@ def execute_vla_task(
             }
         }
     """
+
     try:
+        # somethings not working here !!!
+        # activates cartesian controller and deactivates move_to_home controller
+        session_name = "robot_console"
+        script_name = "switch_controllers.sh"
+        script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+        controller_arg = "cartesian"
+
+        try:
+            subprocess.run(["bash", script_path, controller_arg])
+            print("activated cartesian controller")
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
         # Load config to get default values
         config = load_policy_config()
 

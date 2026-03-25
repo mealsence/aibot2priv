@@ -10,32 +10,35 @@
 #   realsense-viewer
 
 cameras:
-  # Front-facing camera (primary view of workspace)
+  # # Front-facing camera (primary view of workspace)
+  # camera_1:
+  #   serial: "935422070449"
+  #   topic: "/rgb/camera_1"
+  #   width: 640
+  #   height: 480
+  #   fps: 30
+  #   color_mode: "RGB"  # Options: "RGB" or "BGR"
+  #   use_depth: true
+
+  # Second camera (changeb ack to camera 2)
   camera_1:
-    serial: "935422070449"
-    topic: "/rgb/camera_1"
-    width: 640
-    height: 480
-    fps: 30
-    color_mode: "RGB"  # Options: "RGB" or "BGR"
-
-  # Second camera
-  camera_2:
     serial: "829212070728"
-    topic: "/rgb/camera_2"
+    topic: "/rgb/camera_1" 
     width: 640
     height: 480
     fps: 30
     color_mode: "RGB"
+    use_depth: true
 
-  # Third camera
-  camera_3:
-    serial: "831612074257"
-    topic: "/rgb/camera_3"
-    width: 640
-    height: 480
-    fps: 30
-    color_mode: "RGB"
+  # # Third camera
+  # camera_3:
+  #   serial: "831612074257"
+  #   topic: "/rgb/camera_3"
+  #   width: 640
+  #   height: 480
+  #   fps: 30
+  #   color_mode: "RGB"
+  #   use_depth: true
 
 # Configuration notes:
 #

@@ -470,11 +470,12 @@ For applications requiring precise multi-camera synchronization:
 
 ### Depth Data
 
-To enable depth capture (future enhancement):
-1. Set `use_depth: true` in camera config
-2. Publisher will create `/depth/camera_*` topics
-3. Update robot configuration to subscribe to depth topics
-4. Modify data collection to record depth frames
+
+Depth capture is now supported:
+1. Set `use_depth: true` in your camera config (YAML or JSON) for any camera you want to publish depth images for.
+2. The publisher will automatically create `/depth/camera_*` topics for each enabled camera.
+3. Update your robot configuration or data collection scripts to subscribe to these depth topics as needed.
+4. Depth frames will be published as 16UC1 ROS2 Image messages, matching the color image resolution and FPS.
 
 ---
 

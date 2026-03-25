@@ -22,6 +22,9 @@ from google import genai
 from typing import Optional, List, Dict, Tuple
 import numpy as np
 
+from dotenv import load_dotenv
+load_dotenv()
+
 # ===== Additional imports for streaming voice chat functionality =====
 from dataclasses import dataclass
 from pydub import AudioSegment
@@ -35,6 +38,8 @@ from robot_tools import get_robot_tools, get_tool_by_name, preload_all_controlle
 from utils import determine_pause  # pause detection
 from speaking import speaking  # streaming TTS stub
 from simple_camera_stream import CameraStreamer  # Live camera streaming
+
+
 
 
 
@@ -630,6 +635,31 @@ IMPORTANT:
             
         finally:
             self.is_executing = False
+
+def start_controllers():
+    session_name = "robot_console"
+    script_name = "gradio_setup_controllers.sh"
+    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+
+    try:
+        import subprocess
+        # 1. Check if the tmux session already exists
+        check_session = subprocess.run(["tmux", "has-session", "-t", session_name], capture_output=True)
+        
+        if check_session.returncode != 0:
+            # Session doesn't exist: Open a gnome-terminal running a new tmux session
+            # This is the "One-time" window popup
+            cmd = ["gnome-terminal", "--", "tmux", "new-session", "-s", session_name, f"bash {script_path}; exec bash"]
+            subprocess.Popen(cmd)
+            print("Opened new Robot Console window.")
+        else:
+            # Session exists: Send the script command to the existing tmux session
+            # 'C-m' is the tmux way of saying "Press Enter"
+            print("Sending 'return home' command to existing window...")
+            subprocess.run(["tmux", "send-keys", "-t", session_name, f"bash {script_path}", "C-m"])
+        
+    except Exception as e:
+        print(str(e))
 
 
 def create_gradio_interface():
@@ -1294,7 +1324,15 @@ if __name__ == "__main__":
         
         # Pre-load all controllers at startup for fastest tool execution
         # This avoids action server discovery delays and ROS2 node conflicts
-        preload_all_controllers(discover_arm_server=args.discover_arm_server)
+        #preload_all_controllers(discover_arm_server=args.discover_arm_server)
+
+        # launch controllers in tmux
+        start_controllers()
+
+        # TODO: dont hardcode the image provider preload and previous controller preload
+        from robot_tools import preload_image_provider
+        preload_image_provider()
+        
         
         # Pre-load VLA policy if requested
         if args.preload_policy:
