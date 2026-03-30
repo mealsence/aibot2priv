@@ -161,7 +161,7 @@ class GripperController:
             
             print(f"🔧 Sending gripper command via ROS2 CLI: position={position}, effort={max_effort}")
             
-            print(f"copmmand: cmd")
+            print(f"copmmand: {cmd}")
             # Run command with timeout
             result = subprocess.run(
                 cmd, 
@@ -884,14 +884,14 @@ def control_gripper(action: str, force: float = 0.5) -> Dict:
     print(f"🤏 Gripper action: {action} with force: {force}")
     try:
         if action == "open":
-            success = _gripper_controller._send_gripper_command(0.08, 50.0)
+            success = _gripper_controller._send_gripper_command(0.04, 50.0)
             if success:
                 return {"success": True, "action": "opened", "message": "Gripper opened successfully via ROS2"}
             else:
                 return {"success": False, "error": "Failed to open gripper via ROS2", "action": "open"}
         elif action in ["close", "grasp"]:
             max_effort = force * 50.0
-            success = _gripper_controller._send_gripper_command(0.0, max_effort)
+            success = _gripper_controller._send_gripper_command(0.03, max_effort)
             if success:
                 past = "closed" if action == "close" else "grasped"
                 return {"success": True, "action": action, "force": force, "message": f"Gripper {past} successfully via ROS2 with force {force}"}
