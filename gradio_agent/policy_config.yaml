@@ -2,7 +2,7 @@
 # This file configures which policy to load for execute_vla_task
 
 # Policy path (can be HuggingFace Hub repo or local path)
-policy_path: "TInkybala/My-Pi0-Model"
+policy_path: "TInkybala/Real_Panda_ScrewHex_pi0"
 
 # Policy type (act, smolvla, diffusion, etc.)
 policy_type: "pi0"

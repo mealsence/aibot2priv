@@ -39,7 +39,15 @@ from utils import determine_pause  # pause detection
 from speaking import speaking  # streaming TTS stub
 from simple_camera_stream import CameraStreamer  # Live camera streaming
 
-
+# monkey patch to make function_to_tools output work with lists
+def patch_tool_schema(tool):
+    # Patch OpenAI schema for array parameters missing 'items'
+    parameters = tool.function.parameters
+    for param, schema in parameters.get("properties", {}).items():
+        if schema.get("type") == "array" and "items" not in schema:
+            # Default to number, or customize as needed
+            schema["items"] = {"type": "number"}
+    return tool
 
 
 
@@ -324,6 +332,7 @@ class RobotInterface:
         
         for func in robot_functions:
             tool = function_to_tool(func)
+            tool = patch_tool_schema(tool) # patch for openai 
             tools.append(tool)
         
         print(f"🔧 Created {len(tools)} robot tools using function_to_tool:")

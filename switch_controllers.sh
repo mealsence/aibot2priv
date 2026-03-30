@@ -13,14 +13,14 @@ ROS2_SETUP="/home/franka/franka_ros2_i2r/install/setup.bash"
 function activate_cartesian_controller() {
     echo "Activating cartesian_twist_controller on $REMOTE_SSH..."
     ssh $REMOTE_SSH "source $ROS2_SETUP && ros2 control switch_controllers --deactivate move_to_home_lerobot --activate cartesian_twist_controller"
-    sleep 5
+    sleep 3
 }
 
 # activate move_to_home controller and deactivates cartesian controller on remote
 function activate_move_to_home() {
     echo "Activating move_to_home_lerobot controller on $REMOTE_SSH..."
     ssh $REMOTE_SSH "source $ROS2_SETUP && ros2 control switch_controllers --deactivate cartesian_twist_controller --activate move_to_home_lerobot"
-    sleep 5
+    sleep 3
 }
 
 

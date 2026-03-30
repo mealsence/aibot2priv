@@ -21,7 +21,31 @@ import subprocess
 
 from world_model import WorldModel
 
+
 world = WorldModel()
+
+# Get the kinematic solver
+from lerobot_teleoperator_devices.processors.delta_to_joints import _make_default_teleop_action_processor_with_keyboard_patch
+from lerobot.model.kinematics import RobotKinematics
+from pathlib import Path
+import tempfile
+# could have a cleaner way to get the urdf path(?)
+original_urdf = Path("/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description/urdf/panda.urdf")
+urdf_text = original_urdf.read_text()
+package_dir = "/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description"
+urdf_text = urdf_text.replace("package://panda_description", package_dir)
+temp_urdf = tempfile.NamedTemporaryFile(mode="w", suffix=".urdf", delete=False)
+temp_urdf.write(urdf_text)
+temp_urdf.flush()
+
+kinematics_engine = RobotKinematics(
+    urdf_path=temp_urdf.name,
+    target_frame_name="panda_hand",
+    joint_names=[
+        "panda_joint1", "panda_joint2", "panda_joint3",
+        "panda_joint4", "panda_joint5", "panda_joint6", "panda_joint7"
+    ]
+)
 
 # ============================================================================
 # LEROBOT/VLA IMPORTS - For execute_vla_task function
@@ -126,9 +150,10 @@ class GripperController:
             import json
             
             # Use ROS2 CLI to send the command - this avoids context conflicts
+            # for real panda
             cmd = [
                 'ros2', 'action', 'send_goal', 
-                '/panda_hand_controller/gripper_cmd',
+                '/panda_gripper/gripper_action',
                 'control_msgs/action/GripperCommand',
                 f'{{"command": {{"position": {position}, "max_effort": {max_effort}}}}}',
                 '--feedback'  # Get feedback
@@ -136,6 +161,7 @@ class GripperController:
             
             print(f"🔧 Sending gripper command via ROS2 CLI: position={position}, effort={max_effort}")
             
+            print(f"copmmand: cmd")
             # Run command with timeout
             result = subprocess.run(
                 cmd, 
@@ -143,6 +169,7 @@ class GripperController:
                 text=True, 
                 timeout=5.0
             )
+
             
             if result.returncode == 0:
                 print("✅ Gripper command sent successfully via ROS2 CLI")
@@ -188,6 +215,7 @@ class ArmController:
             '/joint_trajectory_controller/follow_joint_trajectory',
             '/position_controller/follow_joint_trajectory',
             '/trajectory_controller/follow_joint_trajectory',
+            
         ]
         
         # Try to discover via ROS2 CLI first
@@ -202,6 +230,7 @@ class ArmController:
             )
             
             if result.returncode == 0:
+                print(result)
                 available_actions = [line.strip() for line in result.stdout.split('\n') if line.strip()]
                 print(f"📋 Found {len(available_actions)} action servers:")
                 for action in available_actions:
@@ -592,7 +621,6 @@ def preload_image_provider() -> bool:
             return False
         
         # Import and create image provider
-        
         from image_getter import ImageProvider
         
         # Create a unique node name to avoid conflicts
@@ -772,6 +800,68 @@ def get_world_model() -> Dict:
         }
 
 
+def move_robot_arm_delta(cur_joint_pos: List[float], dx: float, dy: float, dz: float, speed: float = 1.0) -> Dict:
+    """Move the robot arm by given positional deltas. Requires current robot position in radians.
+
+    Args:
+        cur_joint_pos: current joint angles
+        dx: delta in X-coordinate in meters, + is forward, - is backward
+        dy: delta in Y-coordinate in meters, + is forward, - is backward
+        dz: delta in Z-coordinate in meters, + is forward, - is backward
+        speed: Movement speed (0.1-2.0)
+    
+    Returns:
+        Dictionary with success status and target position in radians
+    """
+    # Run forward-kinematics to determine current cartesian position
+    print(f"current joint position: {cur_joint_pos}")
+    joint_obs_deg = np.rad2deg(np.array(cur_joint_pos, dtype=float))
+    current_pose = kinematics_engine.forward_kinematics(joint_obs_deg)
+    print(f"Current pose: {current_pose}")
+    
+    # Add deltas to current cartesian position
+    desired_pose = current_pose.copy()
+    desired_pose[:3, 3] += np.array([dx, dy, dz], dtype=float)
+    print(f"Target pose: {desired_pose}")
+
+    # Run inverse-kinematics to determine target joint positions
+    target_joint_deg = kinematics_engine.inverse_kinematics(
+        joint_obs_deg,
+        desired_pose,
+        position_weight=1.0,
+        orientation_weight=0.05
+    )
+    
+    # Execute movement
+    target_joint_rad = np.deg2rad(target_joint_deg[:7]).tolist()
+    print(f"Moving robot to: {target_joint_rad}")
+    result = _move_robot_arm_joint_position(target_joint_rad)
+    return result
+
+# TODO: add constraints to prevent the prevent robot from moving out of boundary
+def _move_robot_arm_joint_position(target_joint_positions):
+    target_joint_positions = f"{target_joint_positions}"
+    session_name = "robot_console"
+    script_name = "switch_controllers.sh"
+    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+
+    try:
+        # deactivate move_to_home controller
+        subprocess.run(["bash", script_path, "cartesian"])
+
+        print(target_joint_positions)
+        # Set the goal_position parameter on the controller
+        subprocess.run([
+            "ros2", "param", "set", 
+            "/move_to_home_lerobot", "goal_position", target_joint_positions
+        ], check=True, capture_output=True)
+
+        subprocess.run(["bash", script_path, "home"])
+        return {"success": True, "message": "Homing command sent to console"}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 def move_robot_arm(x: float, y: float, z: float, speed: float = 1.0) -> Dict:
     """Move the robot arm to the specified position.
     
@@ -813,44 +903,81 @@ def control_gripper(action: str, force: float = 0.5) -> Dict:
         return {"success": False, "error": f"Gripper control failed: {str(e)}"}
 
 
-
-
-
+# Something is wrong with this. It keeps reutrning the same thing
 def get_current_arm_position() -> Dict:
     """Get the current position of the robot arm."""
     print("📊 Getting current arm position...")
+    # try:
+    #     if not _arm_controller._initialized:
+    #         _arm_controller._ensure_ros_init()
+    #     current_positions = _arm_controller._get_current_joint_positions()
+    #     if current_positions != [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]:
+    #         return {
+    #             "success": True,
+    #             "action": "position_read",
+    #             "message": "Current arm position retrieved successfully",
+    #             "joint_angles": current_positions,
+    #             "formatted": f"[{', '.join([f'{pos:.3f}' for pos in current_positions])}]"
+    #         }
+    #     else:
+    #         return {
+    #             "success": False,
+    #             "error": "Could not read current joint positions, using fallback values"
+    #         }
+    # except Exception as e:
+    #     return {"success": False, "error": f"Failed to get current arm position: {str(e)}"}
+    if not rclpy.ok():
+        try:
+            rclpy.init()
+        except Exception as e:
+            # Handle cases where init might still fail
+            pass
+
+    node = rclpy.create_node('franka_joint_reader')
+    
     try:
-        if not _arm_controller._initialized:
-            _arm_controller._ensure_ros_init()
-        current_positions = _arm_controller._get_current_joint_positions()
-        if current_positions != [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]:
+        joint_positions = {}
+        target_joints = [
+            'panda_joint1', 'panda_joint2', 'panda_joint3',
+            'panda_joint4', 'panda_joint5', 'panda_joint6', 'panda_joint7'
+        ]
+
+        def callback(msg):
+            for name, pos in zip(msg.name, msg.position):
+                if name in target_joints:
+                    joint_positions[name] = pos
+
+        sub = node.create_subscription(JointState, '/joint_states', callback, 10)
+        
+        start_time = time.time()
+        # Use a shorter spin timeout to stay responsive
+        while time.time() - start_time < 3.0:
+            rclpy.spin_once(node, timeout_sec=0.1)
+            if len(joint_positions) == 7:
+                break
+
+        if len(joint_positions) == 7:
+            current_positions = [joint_positions[j] for j in target_joints]
             return {
                 "success": True,
-                "action": "position_read",
-                "message": "Current arm position retrieved successfully",
                 "joint_angles": current_positions,
                 "formatted": f"[{', '.join([f'{pos:.3f}' for pos in current_positions])}]"
             }
         else:
-            return {
-                "success": False,
-                "error": "Could not read current joint positions, using fallback values"
-            }
-    except Exception as e:
-        return {"success": False, "error": f"Failed to get current arm position: {str(e)}"}
+            return {"success": False, "error": "Timeout reading joints"}
 
-
-def control_arm_home_position() -> Dict:
-    session_name = "robot_console"
-    script_name = "switch_controllers.sh"
-    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
-    controller_arg = "home"
-
-    try:
-        subprocess.run(["bash", script_path, controller_arg])
-        return {"success": True, "message": "Homing command sent to console"}
     except Exception as e:
         return {"success": False, "error": str(e)}
+    
+    finally:
+        # Always clean up the node, but keep rclpy alive for the next call
+        node.destroy_node()
+
+# TODO: make the move_to_home deactivation less hacky (don't need to activate the cartesian controller)
+def control_arm_home_position() -> Dict:
+    home_position = "[0.0329, 0.3870, -0.09267, -2.5056, 0.1815, 2.8588, 0.5796]"
+    return _move_robot_arm_joint_position(home_position)
+
 
 
 
@@ -1709,7 +1836,7 @@ def execute_vla_task(
     """
 
     try:
-        # somethings not working here !!!
+        # somethings not working here
         # activates cartesian controller and deactivates move_to_home controller
         session_name = "robot_console"
         script_name = "switch_controllers.sh"
@@ -1980,6 +2107,7 @@ ROBOT_TOOLS = [
     debug_gripper_status,
     debug_arm_controller_status,
     execute_vla_task,  # VLA policy execution tool
+    move_robot_arm_delta
 ]
 
 
