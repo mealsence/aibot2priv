@@ -263,10 +263,10 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 # Install main project
 if [[ "$INCLUDE_DEV" == true ]]; then
     echo -e "${BLUE}📦 Installing project with dev dependencies...${NC}"
-    uv pip install -e ".[dev]"
+    uv pip install --index-strategy unsafe-best-match -e ".[dev]"
 else
     echo -e "${BLUE}📦 Installing project dependencies...${NC}"
-    uv pip install -e .
+    uv pip install --index-strategy unsafe-best-match -e .
 fi
 
 echo -e "${GREEN}✅ Project dependencies installed${NC}"
