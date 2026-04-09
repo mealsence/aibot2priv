@@ -49,7 +49,7 @@ activate_python_env
 
 # Parse command-line arguments
 POLICY_TYPE="${1:-act}"
-SUPPORTED_POLICIES=("act" "smolvla" "diffusion" "tdmpc" "vqbet" "pi0" "pi05" "groot" "sac")
+SUPPORTED_POLICIES=("act" "smolvla" "diffusion" "tdmpc" "vqbet" "pi0" "pi05" "groot" "sac" "vla0_smol" "wall_x" "wallx")
 
 # Validate policy type
 if [[ ! " ${SUPPORTED_POLICIES[*]} " =~ " ${POLICY_TYPE} " ]]; then
@@ -69,7 +69,7 @@ export PYTORCH_ALLOC_CONF=expandable_segments:True
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Set model repo ID with timestamp and policy type
-MODEL_REPO_ID="${HF_USER:-ases200q2}/Real_Panda_PickScrewdriver_finetune_${POLICY_TYPE}_${TIMESTAMP}"
+MODEL_REPO_ID="${HF_USER:-TInkybala}/Real_Panda_PickCubeVLA0_${POLICY_TYPE}_${TIMESTAMP}"
 
 # Determine training command based on policy type
 # PI05 uses custom script with 8-bit optimizer for memory efficiency
@@ -85,16 +85,16 @@ fi
 
 # Add common training arguments
 TRAIN_CMD+=(
-  --dataset.repo_id="TInkybala/Real_Panda_CartesianVel_Screwdriver_3"
+  --dataset.repo_id="TInkybala/PickCubeVLA0"
   --dataset.streaming=false
   --dataset.video_backend=pyav
   --output_dir="outputs/train/${MODEL_REPO_ID//\//_}"
-  --job_name="panda_pick_screwdriver_${POLICY_TYPE}"
+  --job_name="real_panda_PickCubeVLA0_${POLICY_TYPE}"
   --policy.device=cuda
-  --wandb.enable=false
+  --wandb.enable=true
   --policy.push_to_hub=true
   --policy.repo_id="${MODEL_REPO_ID}"
-  --batch_size=16
+  --batch_size=8
   --steps=20000
 )
 
@@ -139,6 +139,35 @@ elif [[ "${POLICY_TYPE}" == "pi0" ]]; then
   TRAIN_CMD+=(--policy.gradient_checkpointing=true)
   TRAIN_CMD+=(--policy.dtype=bfloat16)
   # To train from scratch instead, comment out the pretrained_path line above
+elif [[ "${POLICY_TYPE}" == "vla0_smol" ]]; then
+  #TRAIN_CMD+=(--policy.type=vla0_smol)
+  TRAIN_CMD+=(--policy.path=TInkybala/Real_Panda_PickCubeVLA0_vla0_smol_20260406_171436)
+  TRAIN_CMD+=(--optimizer.lr=5e-5)
+  TRAIN_CMD+=(--policy.use_amp=true)
+  TRAIN_CMD+=(--policy.crop_shape="[480,480]")
+
+elif [[ "${POLICY_TYPE}" == "wall_x" ]]; then
+  TRAIN_CMD+=(--policy.type=wall_x)
+  TRAIN_CMD+=(--optimizer.lr=5e-5)
+  TRAIN_CMD+=(--policy.use_amp=true)
+  TRAIN_CMD+=(--policy.pretrained_name_or_path=x-square-robot/wall-oss-flow)
+  TRAIN_CMD+=(--policy.prediction_mode=diffusion)
+  TRAIN_CMD+=(--policy.attn_implementation=eager)
+  TRAIN_CMD+=(--policy.chunk_size=10)
+  TRAIN_CMD+=(--policy.n_action_steps=10)
+  TRAIN_CMD+=(--save_freq=2000)
+
+elif [[ "${POLICY_TYPE}" == "wallx" ]]; then
+  TRAIN_CMD+=(--policy.type=wallx)
+  TRAIN_CMD+=(--optimizer.lr=5e-5)
+  TRAIN_CMD+=(--policy.use_amp=true)
+  TRAIN_CMD+=(--policy.pretrained_name_or_path=x-square-robot/wall-oss-flow)
+  TRAIN_CMD+=(--policy.prediction_mode=diffusion)
+  TRAIN_CMD+=(--policy.attn_implementation=eager)
+  TRAIN_CMD+=(--policy.chunk_size=10)
+  TRAIN_CMD+=(--policy.n_action_steps=10)
+  TRAIN_CMD+=(--save_freq=2000)
+  
 else
   TRAIN_CMD+=(--policy.type="${POLICY_TYPE}")
 fi

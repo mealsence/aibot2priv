@@ -950,7 +950,6 @@ def get_current_arm_position() -> Dict:
         sub = node.create_subscription(JointState, '/joint_states', callback, 10)
         
         start_time = time.time()
-        # Use a shorter spin timeout to stay responsive
         while time.time() - start_time < 3.0:
             rclpy.spin_once(node, timeout_sec=0.1)
             if len(joint_positions) == 7:
@@ -970,7 +969,6 @@ def get_current_arm_position() -> Dict:
         return {"success": False, "error": str(e)}
     
     finally:
-        # Always clean up the node, but keep rclpy alive for the next call
         node.destroy_node()
 
 # TODO: make the move_to_home deactivation less hacky (don't need to activate the cartesian controller)

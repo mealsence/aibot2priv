@@ -1,3 +1,18 @@
+# --- Start/Stop BOTH Controllers ---
+function start_both_controllers() {
+    echo "Starting both controllers using gradio_setup_controllers.sh in a new tmux session..."
+    tmux new-session -d -s gradio_controllers './gradio_setup_controllers.sh'
+    echo "Controllers started in tmux session 'gradio_controllers'."
+}
+
+function stop_both_controllers() {
+    echo "Stopping both controllers on $REMOTE_SSH..."
+    ssh $REMOTE_SSH "pgrep -f 'cartesian_twist_controller' && pkill -SIGINT -f 'cartesian_twist_controller' || echo 'No cartesian_twist_controller running'"
+    ssh $REMOTE_SSH "pgrep -f 'move_to_home_lerobot' && pkill -SIGINT -f 'move_to_home_lerobot' || echo 'No move_to_home_lerobot running'"
+    ssh $REMOTE_SSH "pgrep -f 'ros2 run' && pkill -SIGINT -f 'ros2 run' || echo 'No ros2 run process running'"
+    echo "Waiting for Franka hardware lock to clear..."
+    sleep 3
+}
 #!/bin/bash
 # TODO: UPDATE THIS SCRIPT TO USE CONTROLLER_SWTCHING INSTEAD OF STOPPING AND STARTING CONTROLLER
 
@@ -19,101 +34,49 @@ move_to_start_ssh_pid=""
 # Path to ROS2 setup.bash on remote
 ROS2_SETUP="/home/franka/franka_ros2_i2r/install/setup.bash"
 
-# Start cartesian controller on remote
-function start_cartesian_controller() {
-    echo "Starting cartesian_twist_controller on $REMOTE_SSH..."
-    ssh $REMOTE_SSH "source $ROS2_SETUP && ros2 launch franka_bringup cartesian_twist_controller.launch.py robot_ip:=$ROBOT_IP" &
-    cartesian_controller_ssh_pid=$!
-    sleep 5
+
+
+
+# --- Switch Controllers (using switch_controllers.sh) ---
+function switch_to_cartesian_controller() {
+    echo "Switching to cartesian_twist_controller on $REMOTE_SSH..."
+    ./switch_controllers.sh cartesian
 }
 
-# Stop cartesian controller on remote
-function stop_cartesian_controller() {
-    if [ -n "$cartesian_controller_ssh_pid" ]; then
-        echo "Stopping cartesian_twist_controller..."
-        
-        # 1. Ask remote ROS2 nodes to shut down gracefully first (SIGINT)
-        ssh $REMOTE_SSH "pkill -SIGINT -f 'cartesian_twist_controller' || true"
-        ssh $REMOTE_SSH "pkill -SIGINT -f 'ros2 run' || true"
-        
-        # 2. Kill the local SSH process
-        kill $cartesian_controller_ssh_pid 2>/dev/null
-        cartesian_controller_ssh_pid=""
-        
-        # 3. Give the hardware time to release the lock
-        echo "Waiting for Franka hardware lock to clear..."
-        sleep 3 
-    else
-        echo "Cartesian controller is not marked as running locally."
-    fi
-}
-
-
-# Start move_to_home controller on remote
-function start_move_to_home() {
-    echo "Starting move_to_home_lerobot controller on $REMOTE_SSH..."
-    ssh $REMOTE_SSH "source $ROS2_SETUP && ros2 launch franka_bringup move_to_home_lerobot.launch.py robot_ip:=$ROBOT_IP" &
-    move_to_home_ssh_pid=$!
-    sleep 5
-}
-
-# Stop move_to_home controller on remote
-function stop_move_to_home() {
-    if [ -n "$move_to_home_ssh_pid" ]; then
-        echo "Stopping move_to_home_lerobot controller..."
-        
-        # 1. Send interrupt to remote launch file and nodes
-        ssh $REMOTE_SSH "pkill -SIGINT -f 'move_to_home' || true"
-        ssh $REMOTE_SSH "pkill -SIGINT -f 'ros2 run' || true"
-        
-        # 2. Kill local SSH process
-        kill $move_to_home_ssh_pid 2>/dev/null
-        move_to_home_ssh_pid=""
-        
-        echo "Waiting for Franka hardware lock to clear..."
-        sleep 3
-    else
-        echo "Move to home controller is not marked as running locally."
-    fi
+function switch_to_move_to_home() {
+    echo "Switching to move_to_home_lerobot controller on $REMOTE_SSH..."
+    ./switch_controllers.sh home
 }
 
 function main_menu() {
     while true; do
         echo ""
         echo "==== Robot Control Menu ===="
-        echo "1) Start cartesian controller"
-        echo "2) Stop cartesian controller"
-        echo "3) Return robot to home/start position (one step)"
-        echo "4) Stop move_to_home controller"
+        echo "1) Start both controllers (launch both)"
+        echo "2) Stop both controllers (kill both)"
+        echo "3) Switch to cartesian controller (For Teleoperation)"
+        echo "4) Switch to move_to_home controller (move robot to start position)"
         echo "5) Exit"
         echo "==========================="
         read -p "Select option: " opt
         case $opt in
             1)
-                start_cartesian_controller
+                start_both_controllers
                 ;;
             2)
-                stop_cartesian_controller
+                stop_both_controllers
                 ;;
             3)
-                # Single return to home option
-                stop_cartesian_controller
-                start_move_to_home
-                #echo "Waiting 4 seconds for home position..."
-                #sleep 4
-                stop_move_to_home
-                start_cartesian_controller
-                echo "Robot returned to home, cartesian controller resumed. Resume teleoperation."
-            ;;
+                switch_to_cartesian_controller
+                ;;
             4)
-                stop_move_to_home
-            ;;
+                switch_to_move_to_home
+                ;;
             5)
-                stop_cartesian_controller
-                stop_move_to_home
+                stop_both_controllers
                 echo "Exiting."
                 exit 0
-            ;;
+                ;;
             *)
                 echo "Invalid option."
                 ;;
