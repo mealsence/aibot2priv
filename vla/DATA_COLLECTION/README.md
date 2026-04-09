@@ -11,10 +11,10 @@ This directory contains scripts for collecting teleoperation datasets with the F
 ```bash
 # Terminal 1: Start Isaac Sim, load USD, run simulation
 # Terminal 2: Launch ROS2 controller + SpaceMouse
-./launch_position_control_tmux.sh
+../../scripts/launch_position_control_tmux.sh
 
 # Terminal 3: Record data
-./DATA_COLLECTION/record_spacemouse_ee_fast.sh
+./record_spacemouse_ee_fast.sh
 ```
 
 ### Real Robot
@@ -29,10 +29,10 @@ ros2 launch franka_bringup cartesian_twist_controller.launch.py robot_ip:=192.16
 ros2 run spacenav spacenav_node
 
 # Terminal 3 (on workstation): RealSense camera (required for recording)
-cd REAL_ROBOT && ./launch_realsense_camera.sh
+cd ../../REAL_ROBOT && ./launch_realsense_camera.sh
 
 # Terminal 4 (on workstation): Record data
-./DATA_COLLECTION/record_spacemouse_cartesian_vel_real.sh
+./record_spacemouse_cartesian_vel_real.sh
 ```
 
 **Option B — Trajectory control**:
@@ -45,10 +45,10 @@ ros2 launch franka_bringup franka.launch.py robot_ip:=192.168.1.101
 ros2 run spacenav spacenav_node --ros-args -r /spacenav/joy:=/joy
 
 # Terminal 3 (on workstation): RealSense cameras (optional)
-cd REAL_ROBOT && ./launch_realsense_camera.sh
+cd ../../REAL_ROBOT && ./launch_realsense_camera.sh
 
 # Terminal 4 (on workstation): Record data
-LEROBOT_ROBOT_TYPE=panda_ros ./DATA_COLLECTION/record_spacemouse_ee.sh
+LEROBOT_ROBOT_TYPE=panda_ros ./record_spacemouse_ee.sh
 ```
 
 ---
@@ -65,7 +65,7 @@ LEROBOT_ROBOT_TYPE=panda_ros ./DATA_COLLECTION/record_spacemouse_ee.sh
 
 - **Robot**: `panda_ros_cartesian` (CartesianTwistController)
 - **Best for**: Real robot with Cartesian velocity control
-- **Prerequisites**: Franka with `cartesian_twist_controller`, SpaceMouse, RealSense camera (`./REAL_ROBOT/launch_realsense_camera.sh`)
+- **Prerequisites**: Franka with `cartesian_twist_controller`, SpaceMouse, RealSense camera (`../../REAL_ROBOT/launch_realsense_camera.sh`)
 - **Default dataset**: `~/lerobot_datasets/Real_Panda_CartesianVel_SpaceMouse`
 
 ### `record_spacemouse_ee.sh`
@@ -90,7 +90,7 @@ LEROBOT_ROBOT_TYPE=panda_ros ./DATA_COLLECTION/record_spacemouse_ee.sh
 ### Simulation
 
 1. **Isaac Sim** running with the Panda USD scene
-2. **ROS2 workspace** built: `cd isaac_franka_moveit_perception && colcon build --symlink-install`
+2. **ROS2 workspace** built: `cd ../../ros2/isaac_franka_moveit_perception && colcon build --symlink-install`
 3. **SpaceMouse** connected (3Dconnexion)
 4. **Python environment** with lerobot (conda `lerobot-ros-isaac` / `lerobot-ros` or `.venv`)
 
@@ -99,7 +99,7 @@ LEROBOT_ROBOT_TYPE=panda_ros ./DATA_COLLECTION/record_spacemouse_ee.sh
 1. **Franka bringup** running on the control PC
 2. **ROS2** on the workstation, able to reach the control PC
 3. **SpaceMouse** connected
-4. **`panda_ros`** robot type (trajectory controller) — see [REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md](../REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md)
+4. **`panda_ros`** robot type (trajectory controller) — see [REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md](../../REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md)
 
 ---
 
@@ -126,13 +126,13 @@ Override defaults by setting these before running the scripts:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `LEROBOT_REALSENSE_CONFIG_FILE` | Path to camera config YAML | `REAL_ROBOT/camera_config.yaml` |
+| `LEROBOT_REALSENSE_CONFIG_FILE` | Path to camera config YAML | `../../REAL_ROBOT/camera_config.yaml` |
 | `LEROBOT_REALSENSE_CAMERAS` | JSON camera configuration | `'{"camera_1": {"serial": "123"}}'` |
 | `LEROBOT_REALSENSE_DEFAULT_WIDTH` | Camera width | `640` |
 | `LEROBOT_REALSENSE_DEFAULT_HEIGHT` | Camera height | `480` |
 | `LEROBOT_REALSENSE_DEFAULT_FPS` | Camera FPS | `30` |
 
-For more RealSense camera setup details, see [REAL_ROBOT/CAMERA_SETUP.md](../REAL_ROBOT/CAMERA_SETUP.md).
+For more RealSense camera setup details, see [REAL_ROBOT/CAMERA_SETUP.md](../../REAL_ROBOT/CAMERA_SETUP.md).
 When `LEROBOT_CAMERA_TOPICS` and `LEROBOT_CAMERA_TOPIC` are not set, `record_spacemouse_ee.sh` auto-discovers `/rgb/camera_*` topics from ROS2.
 
 ### SpaceMouse Tuning (record_spacemouse_ee_fast.sh)
@@ -160,7 +160,7 @@ When `LEROBOT_CAMERA_TOPICS` and `LEROBOT_CAMERA_TOPIC` are not set, `record_spa
 ### Option 1: During recording
 
 ```bash
-LEROBOT_DATASET_PUSH=true ./DATA_COLLECTION/record_spacemouse_cartesian_vel_real.sh
+LEROBOT_DATASET_PUSH=true ./record_spacemouse_cartesian_vel_real.sh
 ```
 
 ### Option 2: After recording (push existing dataset)
@@ -170,10 +170,10 @@ LEROBOT_DATASET_PUSH=true ./DATA_COLLECTION/record_spacemouse_cartesian_vel_real
 huggingface-cli login
 
 # Push most recent Real_Panda dataset (auto-detected)
-./DATA_COLLECTION/push_dataset_to_hub.sh
+./push_dataset_to_hub.sh
 
 # Or specify path and repo
-./DATA_COLLECTION/push_dataset_to_hub.sh ~/lerobot_datasets/Real_Panda_CartesianVel_SpaceMouse_20260226-132513 ases200q2/Real_Panda_CartesianVel_SpaceMouse
+./push_dataset_to_hub.sh ~/lerobot_datasets/Real_Panda_CartesianVel_SpaceMouse_20260226-132513 ases200q2/Real_Panda_CartesianVel_SpaceMouse
 ```
 
 ### Available scripts
@@ -190,7 +190,7 @@ huggingface-cli login
 ### Basic recording (simulation)
 
 ```bash
-./DATA_COLLECTION/record_spacemouse_ee_fast.sh
+./record_spacemouse_ee_fast.sh
 ```
 
 ### Custom task and episodes
@@ -198,7 +198,7 @@ huggingface-cli login
 ```bash
 LEROBOT_SINGLE_TASK="Stack red cube on blue cube" \
 LEROBOT_NUM_EPISODES=20 \
-./DATA_COLLECTION/record_spacemouse_ee.sh
+./record_spacemouse_ee.sh
 ```
 
 ### Real robot with custom dataset path
@@ -207,19 +207,19 @@ LEROBOT_NUM_EPISODES=20 \
 LEROBOT_ROBOT_TYPE=panda_ros \
 LEROBOT_DATASET_ROOT=~/lerobot_datasets/real_panda_pick_cube \
 LEROBOT_DATASET_REPO_ID=myuser/real_panda_pick_cube \
-./DATA_COLLECTION/record_spacemouse_ee.sh
+./record_spacemouse_ee.sh
 ```
 
 ### Resume existing dataset
 
 ```bash
-LEROBOT_RESUME=true ./DATA_COLLECTION/record_spacemouse_ee.sh
+LEROBOT_RESUME=true ./record_spacemouse_ee.sh
 ```
 
 ### Pass extra CLI arguments
 
 ```bash
-./DATA_COLLECTION/record_spacemouse_ee.sh --teleop.config.linear_step_m=0.005
+./record_spacemouse_ee.sh --teleop.config.linear_step_m=0.005
 ```
 
 ---
@@ -255,5 +255,5 @@ LEROBOT_RESUME=true ./DATA_COLLECTION/record_spacemouse_ee.sh
 ## Related Documentation
 
 - [HOW TO RUN](../HOW%20TO%20RUN) — Teleoperation options and parameters
-- [REAL_ROBOT/README.md](../REAL_ROBOT/README.md) — Real robot setup
-- [REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md](../REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md) — Controller compatibility (sim vs real)
+- [REAL_ROBOT/README.md](../../REAL_ROBOT/README.md) — Real robot setup
+- [REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md](../../REAL_ROBOT/SIM_REAL_CONTROLLER_ALIGNMENT_REPORT.md) — Controller compatibility (sim vs real)

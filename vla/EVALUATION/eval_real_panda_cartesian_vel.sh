@@ -122,7 +122,7 @@ echo "Evaluation dataset will be saved to: ${EVAL_DATASET_ROOT}"
 # ============================================================================
 
 NUM_EVAL_EPISODES="${LEROBOT_EVAL_NUM_EPISODES:-10}"
-SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick up red screwdriver}"
+SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick up cube}"
 
 # Robot: panda_ros_cartesian (Cartesian velocity control via /cartesian_twist_controller/cmd_vel)
 ROBOT_ID="${LEROBOT_ROBOT_ID:-my_panda_real}"
@@ -217,4 +217,7 @@ exec lerobot-record \
   --dataset.num_image_writer_threads_per_camera="${NUM_IMAGE_WRITER_THREADS}" \
   --dataset.video_encoding_batch_size="${VIDEO_ENCODING_BATCH_SIZE}" \
   --display_data="${DISPLAY_DATA}" \
+  --policy.n_action_steps=8 \
   "$@"
+
+#   --policy.n_action_steps=1 \

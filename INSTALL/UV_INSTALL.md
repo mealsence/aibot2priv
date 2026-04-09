@@ -51,7 +51,7 @@ git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
 cd lerobot-ros-agent
 
 # Run the installation script
-./INSTALL/setup_with_uv.sh --cuda128
+./misc/INSTALL/setup_with_uv.sh --cuda128
 ```
 
 ### Option 2: Manual Installation
@@ -73,16 +73,18 @@ uv venv .venv --python python3.10
 # 4. Activate environment
 source .venv/bin/activate
 
-# 5. Install PyTorch with CUDA 12.8
+# 5. Install PyTorch (optional; choose one)
 uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+# uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
 # 6. Install project dependencies
 uv pip install -e .
 
 # 7. Install local packages
 uv pip install -e ./lerobot --no-deps
-uv pip install -e ./lerobot_robot_ros --no-deps
-uv pip install -e ./lerobot_teleoperator_devices --no-deps
+uv pip install -e ./ros2/lerobot_robot_ros --no-deps
+uv pip install -e ./ros2/lerobot_teleoperator_devices --no-deps
 ```
 
 ## Installation Options
@@ -90,20 +92,29 @@ uv pip install -e ./lerobot_teleoperator_devices --no-deps
 The setup script supports several options:
 
 ```bash
+# Default behavior: skip PyTorch (manual install mode)
+./misc/INSTALL/setup_with_uv.sh
+
 # For RTX 40/50 series (CUDA 12.8)
-./INSTALL/setup_with_uv.sh --cuda128
+./misc/INSTALL/setup_with_uv.sh --cuda128
 
 # For RTX 30 series (CUDA 12.4)
-./INSTALL/setup_with_uv.sh --cuda124
+./misc/INSTALL/setup_with_uv.sh --cuda124
 
 # CPU only (no GPU)
-./INSTALL/setup_with_uv.sh --cpu
+./misc/INSTALL/setup_with_uv.sh --cpu
+
+# Force install using selected/default CUDA option
+./misc/INSTALL/setup_with_uv.sh --install-torch
+
+# Explicitly skip PyTorch install
+./misc/INSTALL/setup_with_uv.sh --skip-torch
 
 # Include development dependencies
-./INSTALL/setup_with_uv.sh --cuda128 --dev
+./misc/INSTALL/setup_with_uv.sh --cuda128 --dev
 
 # Skip ROS2 environment check
-./INSTALL/setup_with_uv.sh --cuda128 --no-ros
+./misc/INSTALL/setup_with_uv.sh --cuda128 --no-ros
 ```
 
 ## Environment Activation
@@ -122,7 +133,7 @@ Or manually:
 source /opt/ros/humble/setup.bash
 
 # Source local ROS2 workspace (if built)
-source isaac_franka_moveit_perception/install/setup.bash
+source ros2/isaac_franka_moveit_perception/install/setup.bash
 
 # Activate Python environment
 source .venv/bin/activate
@@ -138,10 +149,11 @@ lerobot-ros-agent/
 ├── activate_env.sh                 # Combined activation script
 ├── pyproject.toml                  # Project dependencies
 ├── lerobot/                        # LeRobot submodule
-├── lerobot_robot_ros/              # ROS2 robot wrapper
-├── lerobot_teleoperator_devices/   # Teleoperator devices
-├── gradio_agent/                   # Gradio demo application
-└── isaac_franka_moveit_perception/ # ROS2 packages
+├── ros2/
+│   ├── isaac_franka_moveit_perception/ # ROS2 packages
+│   ├── lerobot_robot_ros/          # ROS2 robot wrapper
+│   └── lerobot_teleoperator_devices/ # Teleoperator devices
+└── ui/gradio_agent/                # Gradio demo application
 ```
 
 ## Verify Installation
@@ -149,9 +161,9 @@ lerobot-ros-agent/
 After activation, verify the installation:
 
 ```bash
-# Check Python packages
-python -c "import torch; print(f'PyTorch: {torch.__version__}')"
-python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')"
+# Check Python packages (if torch installed)
+python -c "import torch; print(f'PyTorch: {torch.__version__}')" || echo "Torch not installed"
+python -c "import torch; print(f'CUDA: {torch.cuda.is_available()}')" || true
 python -c "import lerobot; print(f'LeRobot: {lerobot.__version__}')"
 python -c "from lerobot_robot_ros import PandaROSPositionConfig; print('lerobot_robot_ros: OK')"
 
@@ -172,7 +184,7 @@ Once installed, run the main application:
 source activate_env.sh
 
 # Run with policy preloading
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ## Troubleshooting
@@ -210,7 +222,7 @@ uv pip install -e ./lerobot --no-deps
 ```bash
 # Make sure to source ROS2 before running
 source /opt/ros/humble/setup.bash
-source isaac_franka_moveit_perception/install/setup.bash
+source ros2/isaac_franka_moveit_perception/install/setup.bash
 ```
 
 ### Issue: uv command not found

@@ -23,10 +23,10 @@ device: "cuda"                   # "cuda" or "cpu"
 ### 2. Run
 ```bash
 # With pre-loading (faster first VLA task)
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 
 # Or without pre-loading (faster startup)
-python gradio_agent/demo_tool_calling.py
+python ui/gradio_agent/demo_tool_calling.py
 ```
 
 Done! ✅
@@ -70,7 +70,7 @@ policy_path: "/home/user/my_policies/local_policy"
 ### Override with Environment Variable
 ```bash
 export LEROBOT_POLICY_PATH="different/policy"
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ---

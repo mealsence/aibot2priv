@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# script to switch between cartesian_twist_controller and move_to_home_lerobot 
+
 # Set these to your remote controller computer's SSH info
 REMOTE_USER="franka"
 REMOTE_HOST="192.168.1.2"

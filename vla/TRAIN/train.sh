@@ -69,7 +69,7 @@ export PYTORCH_ALLOC_CONF=expandable_segments:True
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Set model repo ID with timestamp and policy type
-MODEL_REPO_ID="${HF_USER:-TInkybala}/Real_Panda_PickCubeVLA0_${POLICY_TYPE}_${TIMESTAMP}"
+MODEL_REPO_ID="${HF_USER:-TInkybala}/Real_Panda_test_${POLICY_TYPE}_${TIMESTAMP}"
 
 # Determine training command based on policy type
 # PI05 uses custom script with 8-bit optimizer for memory efficiency
@@ -96,6 +96,7 @@ TRAIN_CMD+=(
   --policy.repo_id="${MODEL_REPO_ID}"
   --batch_size=8
   --steps=20000
+  --save_freq=5000
 )
 
 # Add policy-specific configuration

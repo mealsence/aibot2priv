@@ -66,7 +66,7 @@ activate_python_env() {
 activate_python_env
 
 #/home/student/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_3_20260305-151000/
-DATASET_BASE_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/Real_Panda_CartesianVel_Screwdriver_3_20260305-151000/}"
+DATASET_BASE_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/test_new/}"
 RESUME_INPUT="${LEROBOT_RESUME:-false}"
 
 case "${RESUME_INPUT}" in
@@ -96,8 +96,8 @@ else
     DATASET_RESUME="false"
 fi
 
-DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Real_Panda_CartesianVel_SpaceMouse}"
-SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick cube from table}"
+DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-TInkybala/PickCubeVLA0}"
+SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick up cube}"
 ROBOT_ID="${LEROBOT_ROBOT_ID:-my_panda_real}"
 TELEOP_ID="${LEROBOT_TELEOP_ID:-my_spacemouse_leader}"
 NUM_EPISODES="${LEROBOT_NUM_EPISODES:-25}"

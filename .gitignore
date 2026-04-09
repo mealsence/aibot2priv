@@ -30,6 +30,11 @@ env/
 .venv
 conda-env/
 
+# Environment files
+.env
+.env.*
+*.env
+
 # ROS2
 install/
 build/

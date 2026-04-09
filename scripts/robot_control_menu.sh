@@ -1,7 +1,13 @@
+#!/bin/bash
+
+# CLI UI for easy start/stopping and switching between the two controllers on the Franka robot.
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # --- Start/Stop BOTH Controllers ---
 function start_both_controllers() {
     echo "Starting both controllers using gradio_setup_controllers.sh in a new tmux session..."
-    tmux new-session -d -s gradio_controllers './gradio_setup_controllers.sh'
+    tmux new-session -d -s gradio_controllers "bash ${SCRIPT_DIR}/gradio_setup_controllers.sh"
     echo "Controllers started in tmux session 'gradio_controllers'."
 }
 
@@ -13,7 +19,7 @@ function stop_both_controllers() {
     echo "Waiting for Franka hardware lock to clear..."
     sleep 3
 }
-#!/bin/bash
+
 # TODO: UPDATE THIS SCRIPT TO USE CONTROLLER_SWTCHING INSTEAD OF STOPPING AND STARTING CONTROLLER
 
 # Set these to your remote controller computer's SSH info
@@ -40,12 +46,12 @@ ROS2_SETUP="/home/franka/franka_ros2_i2r/install/setup.bash"
 # --- Switch Controllers (using switch_controllers.sh) ---
 function switch_to_cartesian_controller() {
     echo "Switching to cartesian_twist_controller on $REMOTE_SSH..."
-    ./switch_controllers.sh cartesian
+    bash "${SCRIPT_DIR}/switch_controllers.sh" cartesian
 }
 
 function switch_to_move_to_home() {
     echo "Switching to move_to_home_lerobot controller on $REMOTE_SSH..."
-    ./switch_controllers.sh home
+    bash "${SCRIPT_DIR}/switch_controllers.sh" home
 }
 
 function main_menu() {

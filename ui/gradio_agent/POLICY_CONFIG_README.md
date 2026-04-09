@@ -31,10 +31,10 @@ device: "cuda"
 
 ```bash
 # Pre-load policy at startup (faster first execution)
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 
 # Or run normally (loads policy on first use)
-python gradio_agent/demo_tool_calling.py
+python ui/gradio_agent/demo_tool_calling.py
 ```
 
 That's it!
@@ -73,7 +73,7 @@ export LEROBOT_POLICY_PATH="your/policy/path"
 export LEROBOT_POLICY_TYPE="act"
 export LEROBOT_DEVICE="cuda"
 
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ✅ **Best for:** Production, CI/CD, Docker
@@ -142,7 +142,7 @@ Pre-loading loads the VLA policy when the application starts instead of on first
 
 **Option 1: Command-line flag (Integrated)**
 ```bash
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 **Option 2: Standalone script**
@@ -151,7 +151,7 @@ python gradio_agent/demo_tool_calling.py --preload-policy
 python gradio_agent/preload_policy_standalone.py
 
 # Then start your app
-python gradio_agent/demo_tool_calling.py
+python ui/gradio_agent/demo_tool_calling.py
 ```
 
 **Option 3: Programmatic**
@@ -342,7 +342,7 @@ gradio_agent/
 nano gradio_agent/policy_config.yaml
 
 # 2. Run with pre-loading
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ---
@@ -362,7 +362,7 @@ execution:
 export LEROBOT_POLICY_PATH="prod/optimized_policy_v2"
 export LEROBOT_DEVICE="cuda"
 
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ---
@@ -375,11 +375,11 @@ cat > policy_config.yaml <<EOF
 policy_path: "robot/pick_task_policy"
 EOF
 
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 
 # Or use environment variable override
 export LEROBOT_POLICY_PATH="robot/place_task_policy"
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ---
@@ -391,7 +391,7 @@ python gradio_agent/demo_tool_calling.py --preload-policy
 ```bash
 # Point to custom config file
 export LEROBOT_CONFIG_PATH="/path/to/custom_config.yaml"
-python gradio_agent/demo_tool_calling.py --preload-policy
+python ui/gradio_agent/demo_tool_calling.py --preload-policy
 ```
 
 ### Programmatic Configuration
@@ -466,7 +466,7 @@ preload_vla_policy(
 
 **Simplest workflow:**
 1. Edit `policy_config.yaml` with your policy path
-2. Run `python gradio_agent/demo_tool_calling.py --preload-policy`
+2. Run `python ui/gradio_agent/demo_tool_calling.py --preload-policy`
 3. Done!
 
 **Configuration priority:**

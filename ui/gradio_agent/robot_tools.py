@@ -18,6 +18,7 @@ from sensor_msgs.msg import JointState
 from std_msgs.msg import Float64MultiArray
 from rclpy.node import Node
 import subprocess
+from pathlib import Path
 
 from world_model import WorldModel
 
@@ -27,12 +28,20 @@ world = WorldModel()
 # Get the kinematic solver
 from lerobot_teleoperator_devices.processors.delta_to_joints import _make_default_teleop_action_processor_with_keyboard_patch
 from lerobot.model.kinematics import RobotKinematics
-from pathlib import Path
 import tempfile
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
 # could have a cleaner way to get the urdf path(?)
-original_urdf = Path("/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description/urdf/panda.urdf")
+urdf_candidates = [
+    PROJECT_ROOT / "ros2" / "isaac_franka_moveit_perception" / "src" / "panda_description" / "urdf" / "panda.urdf",
+    PROJECT_ROOT / "isaac_franka_moveit_perception" / "src" / "panda_description" / "urdf" / "panda.urdf",
+]
+original_urdf = next((path for path in urdf_candidates if path.exists()), None)
+if original_urdf is None:
+    raise FileNotFoundError(f"Could not locate panda.urdf. Tried: {urdf_candidates}")
+
 urdf_text = original_urdf.read_text()
-package_dir = "/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description"
+package_dir = str(original_urdf.parent.parent)
 urdf_text = urdf_text.replace("package://panda_description", package_dir)
 temp_urdf = tempfile.NamedTemporaryFile(mode="w", suffix=".urdf", delete=False)
 temp_urdf.write(urdf_text)
@@ -843,11 +852,11 @@ def _move_robot_arm_joint_position(target_joint_positions):
     target_joint_positions = f"{target_joint_positions}"
     session_name = "robot_console"
     script_name = "switch_controllers.sh"
-    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+    script_path = PROJECT_ROOT / "scripts" / script_name
 
     try:
         # deactivate move_to_home controller
-        subprocess.run(["bash", script_path, "cartesian"])
+        subprocess.run(["bash", str(script_path), "cartesian"])
 
         print(target_joint_positions)
         # Set the goal_position parameter on the controller
@@ -856,7 +865,7 @@ def _move_robot_arm_joint_position(target_joint_positions):
             "/move_to_home_lerobot", "goal_position", target_joint_positions
         ], check=True, capture_output=True)
 
-        subprocess.run(["bash", script_path, "home"])
+        subprocess.run(["bash", str(script_path), "home"])
         return {"success": True, "message": "Homing command sent to console"}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -1838,11 +1847,11 @@ def execute_vla_task(
         # activates cartesian controller and deactivates move_to_home controller
         session_name = "robot_console"
         script_name = "switch_controllers.sh"
-        script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+        script_path = PROJECT_ROOT / "scripts" / script_name
         controller_arg = "cartesian"
 
         try:
-            subprocess.run(["bash", script_path, controller_arg])
+            subprocess.run(["bash", str(script_path), controller_arg])
             print("activated cartesian controller")
         except Exception as e:
             return {"success": False, "error": str(e)}

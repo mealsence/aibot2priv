@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# This script is used to ensure that cartesian_twist_controller and move_to_home_lerobot controllers 
+# are started when starting gradio.
+
 # Set these to your remote controller computer's SSH info
 REMOTE_USER="franka"
 REMOTE_HOST="192.168.1.2"

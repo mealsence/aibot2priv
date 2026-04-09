@@ -5,10 +5,19 @@ from pathlib import Path
 import tempfile
 import numpy as np
 
-original_urdf = Path("/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description/urdf/panda.urdf")
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+urdf_candidates = [
+    PROJECT_ROOT / "ros2" / "isaac_franka_moveit_perception" / "src" / "panda_description" / "urdf" / "panda.urdf",
+    PROJECT_ROOT / "isaac_franka_moveit_perception" / "src" / "panda_description" / "urdf" / "panda.urdf",
+]
+original_urdf = next((path for path in urdf_candidates if path.exists()), None)
+if original_urdf is None:
+    raise FileNotFoundError(f"Could not locate panda.urdf. Tried: {urdf_candidates}")
+
 urdf_text = original_urdf.read_text()
 
-package_dir = "/home/student/lerobot-ros-agent/isaac_franka_moveit_perception/src/panda_description"
+package_dir = str(original_urdf.parent.parent)
 urdf_text = urdf_text.replace("package://panda_description", package_dir)
 
 temp_urdf = tempfile.NamedTemporaryFile(mode="w", suffix=".urdf", delete=False)

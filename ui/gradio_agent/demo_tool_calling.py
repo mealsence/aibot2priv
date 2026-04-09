@@ -14,6 +14,7 @@ import rclpy
 import base64
 import json
 import io
+from pathlib import Path
 
 import openai
 from openai import OpenAI
@@ -38,6 +39,8 @@ from robot_tools import get_robot_tools, get_tool_by_name, preload_all_controlle
 from utils import determine_pause  # pause detection
 from speaking import speaking  # streaming TTS stub
 from simple_camera_stream import CameraStreamer  # Live camera streaming
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # monkey patch to make function_to_tools output work with lists
 def patch_tool_schema(tool):
@@ -648,7 +651,7 @@ IMPORTANT:
 def start_controllers():
     session_name = "robot_console"
     script_name = "gradio_setup_controllers.sh"
-    script_path = f'/home/student/lerobot-ros-agent/{script_name}'
+    script_path = PROJECT_ROOT / "scripts" / script_name
 
     try:
         import subprocess

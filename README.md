@@ -33,13 +33,13 @@ git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
 cd lerobot-ros-agent
 
 # Run automated setup (CUDA 12.8 for RTX 40/50 series)
-./INSTALL/setup_with_uv.sh --cuda128
+./misc/INSTALL/setup_with_uv.sh --cuda128
 
 # Activate environment
 source activate_env.sh
 ```
 
-See [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) for detailed instructions.
+See [misc/INSTALL/UV_INSTALL.md](misc/INSTALL/UV_INSTALL.md) for detailed instructions.
 
 ### Option 2: Conda Installation
 
@@ -51,10 +51,31 @@ See [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) for detailed instructions.
 ### Build ROS2 Packages
 
 ```bash
-cd isaac_franka_moveit_perception
+cd ros2/isaac_franka_moveit_perception
 colcon build --symlink-install
 source install/setup.bash
 ```
+
+### Install Custom Policies
+
+To install a custom VLA policy, add the policy to the `vla/policies` directory and install using `uv`:
+
+```bash
+# Navigate to the policy directory
+cd vla/policies/{policy_name}
+
+# Install the policy in editable mode
+uv pip install -e .
+```
+
+**Example: Installing WallX policy**
+
+```bash
+cd vla/policies/lerobot_policy_wallx
+uv pip install -e .
+```
+
+This installs the policy package in editable mode, making it available for both training and inference. The policy will be auto-discovered when you run `lerobot-teleoperate` or other lerobot commands.
 
 ### Git Submodules
 
@@ -64,22 +85,60 @@ The `lerobot` directory is a git submodule. When cloning:
 
 ## 🎮 Quick Start
 
-### 1. Start Isaac Sim
+### Option A: Isaac Sim Simulation
+
+#### 1. Start Isaac Sim
 
 1. Open Isaac Sim and load the USD file from `isaac_franka_moveit_perception/isaacsim/`
 2. Run the simulation
 
-### 2. Launch ROS2 Controller
+#### 2. Launch ROS2 Controller
 
 ```bash
-./launch_position_control_tmux.sh
+./scripts/launch_position_control_tmux.sh
 ```
 
-### 3. Move to Home Position
+#### 3. Move to Home Position
 
 ```bash
-python3 isaac_franka_moveit_perception/move_to_joint_angles.py
+python3 ros2/isaac_franka_moveit_perception/move_to_joint_angles.py
 ```
+
+### Option B: Real Franka Panda Robot
+
+#### Prerequisites
+
+- **Control PC** (192.168.1.2): Connected to robot via Ethernet, runs `franka_ros2` 
+- **Workstation** (this machine): On same network, runs control scripts
+- **Robot**: Franka Panda with FCI interface at 192.168.1.101
+
+#### 1. Start Controllers
+
+Start the Robot Control Menu:
+
+```bash
+./scripts/robot_control_menu.sh 
+```
+
+#### 2. Move Robot to Joint Angles
+
+```bash
+# example: home position
+ros2 param set /move_to_home_lerobot goal_position "[-0.034, -0.436, -0.076, -2.581, -0.038, 2.145, 0.703]"
+
+# switch controller
+./switch_controller.sh home
+```
+
+#### 3. RealSense Camera Setup
+
+```bash
+cd REAL_ROBOT
+./launch_realsense_camera.sh --config camera_config.yaml
+```
+
+See [REAL_ROBOT/CAMERA_SETUP.md](REAL_ROBOT/CAMERA_SETUP.md) for serial number configuration.
+
 
 
 ## 📹 Data Collection
@@ -87,11 +146,11 @@ python3 isaac_franka_moveit_perception/move_to_joint_angles.py
 ### SpaceMouse End-Effector Control
 
 ```bash
-./DATA_COLLECTION/record_spacemouse_ee_fast.sh
+./vla/DATA_COLLECTION/record_spacemouse_ee_fast.sh
 ```
 
 For more recording options, see:
-- `./DATA_COLLECTION/record_spacemouse_ee.sh` - Standard recording script
+- `./vla/DATA_COLLECTION/record_spacemouse_ee.sh` - Standard recording script
 - See [HOW TO RUN](HOW%20TO%20RUN) for detailed teleoperation options
 
 ## 🎯 Teleoperation Options
@@ -164,7 +223,7 @@ See [HOW TO RUN](HOW%20TO%20RUN) for detailed teleoperation documentation.
 ## 🧪 Evaluation
 
 ```bash
-./EVALUATION/eval.sh <model_checkpoint>
+./vla/EVALUATION/eval.sh <model_checkpoint>
 ```
 
 ## 🤖 Gradio Agent (Voice-Controlled Robot)
@@ -172,7 +231,7 @@ See [HOW TO RUN](HOW%20TO%20RUN) for detailed teleoperation documentation.
 Run the voice-controlled robot agent with LLM integration:
 
 ```bash
-cd gradio_agent
+cd ui/gradio_agent
 python demo_tool_calling.py
 ```
 
@@ -184,23 +243,22 @@ python demo_tool_calling.py
 
 The interface will be available at `http://0.0.0.0:7868`
 
-See [gradio_agent/README.md](gradio_agent/README.md) for detailed documentation.
+See [ui/gradio_agent/README.md](ui/gradio_agent/README.md) for detailed documentation.
 
 ## 📁 Project Structure
 
 ```
 lerobot-ros-agent/
-├── DATA_COLLECTION/      # Data collection scripts
-├── DATASET/              # Dataset utilities
-├── EVALUATION/           # Evaluation scripts
-├── INFERENCE/            # Policy inference examples
-├── INSTALL/              # Installation scripts
-├── TRAIN/                # Training scripts
-├── TEST/                 # Test scripts
-├── gradio_agent/         # Gradio-based voice agent
-├── isaac_franka_moveit_perception/  # ROS2 packages
-├── lerobot_robot_ros/    # LeRobot ROS2 robot interface
-└── lerobot_teleoperator_devices/    # Teleoperation devices
+├── scripts/               # Launch and control scripts
+├── vla/
+│   ├── DATA_COLLECTION/   # Recording and dataset scripts
+│   └── EVALUATION/        # Evaluation scripts
+├── ui/
+│   └── gradio_agent/      # Gradio-based voice agent
+└── ros2/
+  ├── isaac_franka_moveit_perception/  # ROS2 packages
+  ├── lerobot_robot_ros/               # LeRobot ROS2 robot interface
+  └── lerobot_teleoperator_devices/    # Teleoperation devices
 ```
 
 ## 🔍 Camera Configuration
@@ -236,9 +294,9 @@ export LEROBOT_CAMERA_FPS=30
 ## 📚 Additional Documentation
 
 - [HOW TO RUN](HOW%20TO%20RUN) - Detailed usage instructions
-- [gradio_agent/README.md](gradio_agent/README.md) - Gradio agent documentation
-- [gradio_agent/POLICY_CONFIG_README.md](gradio_agent/POLICY_CONFIG_README.md) - Policy configuration guide
-- [INSTALL/UV_INSTALL.md](INSTALL/UV_INSTALL.md) - UV installation guide
+- [ui/gradio_agent/README.md](ui/gradio_agent/README.md) - Gradio agent documentation
+- [ui/gradio_agent/POLICY_CONFIG_README.md](ui/gradio_agent/POLICY_CONFIG_README.md) - Policy configuration guide
+- [misc/INSTALL/UV_INSTALL.md](misc/INSTALL/UV_INSTALL.md) - UV installation guide
 
 ## 🤝 Contributing
 

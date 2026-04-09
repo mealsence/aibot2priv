@@ -14,12 +14,14 @@
 #   - Compatible with ROS2 Humble
 #
 # Usage:
-#   ./INSTALL/setup_with_uv.sh [OPTIONS]
+#   ./misc/INSTALL/setup_with_uv.sh [OPTIONS]
 #
 # Options:
 #   --cuda128     Install PyTorch with CUDA 12.8 (RTX 40/50 series)
 #   --cuda124     Install PyTorch with CUDA 12.4 (RTX 30 series)
 #   --cpu         Install PyTorch CPU-only version
+#   --install-torch  Install PyTorch using selected/default CUDA option
+#   --skip-torch     Skip PyTorch install (default; prints manual commands)
 #   --dev         Include development dependencies
 #   --no-ros      Skip ROS2 environment sourcing (for non-ROS usage)
 #   --help        Show this help message
@@ -38,6 +40,7 @@ NC='\033[0m' # No Color
 
 # Default options
 CUDA_VERSION="cu128"
+INSTALL_TORCH=false
 INCLUDE_DEV=false
 SKIP_ROS=false
 VENV_NAME=".venv"
@@ -47,14 +50,25 @@ while [[ $# -gt 0 ]]; do
     case $1 in
         --cuda128)
             CUDA_VERSION="cu128"
+            INSTALL_TORCH=true
             shift
             ;;
         --cuda124)
             CUDA_VERSION="cu124"
+            INSTALL_TORCH=true
             shift
             ;;
         --cpu)
             CUDA_VERSION="cpu"
+            INSTALL_TORCH=true
+            shift
+            ;;
+        --install-torch)
+            INSTALL_TORCH=true
+            shift
+            ;;
+        --skip-torch)
+            INSTALL_TORCH=false
             shift
             ;;
         --dev)
@@ -84,7 +98,28 @@ echo -e "${NC}"
 
 # Get the script directory and project root
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Expected layout: <repo>/misc/INSTALL/setup_with_uv.sh
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Fallback: search upwards for repository root containing pyproject.toml
+if [[ ! -f "$PROJECT_ROOT/pyproject.toml" ]]; then
+    SEARCH_DIR="$SCRIPT_DIR"
+    while [[ "$SEARCH_DIR" != "/" ]]; do
+        if [[ -f "$SEARCH_DIR/pyproject.toml" ]]; then
+            PROJECT_ROOT="$SEARCH_DIR"
+            break
+        fi
+        SEARCH_DIR="$(dirname "$SEARCH_DIR")"
+    done
+fi
+
+if [[ ! -f "$PROJECT_ROOT/pyproject.toml" ]]; then
+    echo -e "${RED}❌ Could not locate project root (missing pyproject.toml)${NC}"
+    echo -e "${YELLOW}   Run this script from within the lerobot-ros-agent repository.${NC}"
+    exit 1
+fi
+
 cd "$PROJECT_ROOT"
 
 echo -e "${BLUE}📁 Project root: ${PROJECT_ROOT}${NC}"
@@ -189,24 +224,33 @@ echo ""
 # Step 4: Install PyTorch
 # =============================================================================
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-echo -e "${YELLOW}Step 4: Installing PyTorch (${CUDA_VERSION})${NC}"
+echo -e "${YELLOW}Step 4: PyTorch setup${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [[ "$CUDA_VERSION" == "cpu" ]]; then
-    echo -e "${BLUE}📦 Installing PyTorch (CPU)...${NC}"
-    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-elif [[ "$CUDA_VERSION" == "cu124" ]]; then
-    echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.4...${NC}"
-    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-else
-    echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.8...${NC}"
-    uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-fi
+if [[ "$INSTALL_TORCH" == true ]]; then
+    if [[ "$CUDA_VERSION" == "cpu" ]]; then
+        echo -e "${BLUE}📦 Installing PyTorch (CPU)...${NC}"
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+    elif [[ "$CUDA_VERSION" == "cu124" ]]; then
+        echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.4...${NC}"
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+    else
+        echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.8...${NC}"
+        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+    fi
 
-# Verify PyTorch installation
-python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}')" && \
-    echo -e "${GREEN}✅ PyTorch installed successfully${NC}" || \
-    echo -e "${RED}❌ PyTorch installation failed${NC}"
+    # Verify PyTorch installation
+    python -c "import torch; print(f'PyTorch {torch.__version__}, CUDA: {torch.cuda.is_available()}')" && \
+        echo -e "${GREEN}✅ PyTorch installed successfully${NC}" || \
+        echo -e "${RED}❌ PyTorch installation failed${NC}"
+else
+    echo -e "${YELLOW}⏭️  Skipping PyTorch install (default behavior)${NC}"
+    echo -e "${BLUE}Install manually based on your GPU/driver:${NC}"
+    echo "  CUDA 12.8: uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"
+    echo "  CUDA 12.4: uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124"
+    echo "  CPU only : uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu"
+    echo -e "${BLUE}Tip: re-run this script with --cuda128, --cuda124, or --cpu for automatic install.${NC}"
+fi
 echo ""
 
 # =============================================================================
@@ -248,16 +292,16 @@ if [[ -d "lerobot" ]]; then
 fi
 
 # Install lerobot_robot_ros
-if [[ -d "lerobot_robot_ros" ]]; then
+if [[ -d "ros2/lerobot_robot_ros" ]]; then
     echo -e "${BLUE}📦 Installing lerobot_robot_ros...${NC}"
-    uv pip install -e "./lerobot_robot_ros" --no-deps
+    uv pip install -e "./ros2/lerobot_robot_ros" --no-deps
     echo -e "${GREEN}✅ lerobot_robot_ros installed${NC}"
 fi
 
 # Install lerobot_teleoperator_devices
-if [[ -d "lerobot_teleoperator_devices" ]]; then
+if [[ -d "ros2/lerobot_teleoperator_devices" ]]; then
     echo -e "${BLUE}📦 Installing lerobot_teleoperator_devices...${NC}"
-    uv pip install -e "./lerobot_teleoperator_devices" --no-deps
+    uv pip install -e "./ros2/lerobot_teleoperator_devices" --no-deps
     echo -e "${GREEN}✅ lerobot_teleoperator_devices installed${NC}"
 fi
 
@@ -270,10 +314,10 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}Step 7: Installing gradio_agent requirements${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-if [[ -f "gradio_agent/requirements.txt" ]]; then
+if [[ -f "ui/gradio_agent/requirements.txt" ]]; then
     echo -e "${BLUE}📦 Installing gradio_agent requirements...${NC}"
     # Install with version constraints relaxed for numpy
-    uv pip install -r gradio_agent/requirements.txt --no-deps 2>/dev/null || true
+    uv pip install -r ui/gradio_agent/requirements.txt --no-deps 2>/dev/null || true
     echo -e "${GREEN}✅ gradio_agent requirements installed${NC}"
 fi
 
@@ -303,8 +347,8 @@ if [[ -f "/opt/ros/humble/setup.bash" ]]; then
 fi
 
 # Source local ROS2 workspace (if built)
-if [[ -f "$SCRIPT_DIR/isaac_franka_moveit_perception/install/setup.bash" ]]; then
-    source "$SCRIPT_DIR/isaac_franka_moveit_perception/install/setup.bash"
+if [[ -f "$SCRIPT_DIR/ros2/isaac_franka_moveit_perception/install/setup.bash" ]]; then
+    source "$SCRIPT_DIR/ros2/isaac_franka_moveit_perception/install/setup.bash"
     echo "✅ Local ROS2 workspace sourced"
 fi
 
@@ -313,12 +357,12 @@ if [[ -f "$SCRIPT_DIR/.venv/bin/activate" ]]; then
     source "$SCRIPT_DIR/.venv/bin/activate"
     echo "✅ Python virtual environment activated"
 else
-    echo "⚠️  Virtual environment not found. Run INSTALL/setup_with_uv.sh first."
+    echo "⚠️  Virtual environment not found. Run misc/INSTALL/setup_with_uv.sh first."
 fi
 
 echo ""
 echo "Environment ready! You can now run:"
-echo "  python gradio_agent/demo_tool_calling.py --preload-policy"
+echo "  python ui/gradio_agent/demo_tool_calling.py --preload-policy"
 EOF
 
 chmod +x activate_env.sh
@@ -334,11 +378,14 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 
 echo -e "${BLUE}Checking imports...${NC}"
 
-python << 'VERIFY_EOF'
+INSTALL_TORCH="$INSTALL_TORCH" python << 'VERIFY_EOF'
 import sys
+import os
 success = True
+
+install_torch = os.environ.get("INSTALL_TORCH", "false").lower() == "true"
+
 packages = [
-    ("torch", "PyTorch"),
     ("numpy", "NumPy"),
     ("cv2", "OpenCV"),
     ("gradio", "Gradio"),
@@ -354,12 +401,24 @@ for module, name in packages:
         print(f"  ❌ {name}: {e}")
         success = False
 
-# Check CUDA
-import torch
-if torch.cuda.is_available():
-    print(f"  ✅ CUDA: {torch.version.cuda} ({torch.cuda.get_device_name(0)})")
-else:
-    print(f"  ⚠️  CUDA: Not available (CPU mode)")
+# Check torch (required only if auto-install was requested)
+try:
+    import torch
+    print(f"  ✅ PyTorch: {torch.__version__}")
+    if torch.cuda.is_available():
+        print(f"  ✅ CUDA: {torch.version.cuda} ({torch.cuda.get_device_name(0)})")
+    else:
+        print(f"  ⚠️  CUDA: Not available (CPU mode)")
+except ImportError as e:
+    if install_torch:
+        print(f"  ❌ PyTorch: {e}")
+        success = False
+    else:
+        print(f"  ⚠️  PyTorch: Not installed (manual install mode)")
+        print("     Use one of:")
+        print("     uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128")
+        print("     uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124")
+        print("     uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu")
 
 # Check lerobot
 try:
@@ -391,7 +450,11 @@ echo -e "${NC}"
 
 echo -e "${GREEN}📋 Summary:${NC}"
 echo "  • Virtual environment: $PROJECT_ROOT/$VENV_NAME"
-echo "  • PyTorch CUDA: $CUDA_VERSION"
+if [[ "$INSTALL_TORCH" == true ]]; then
+    echo "  • PyTorch: installed ($CUDA_VERSION)"
+else
+    echo "  • PyTorch: skipped (manual install mode)"
+fi
 echo "  • Activation script: source activate_env.sh"
 echo ""
 
@@ -401,9 +464,9 @@ echo "  # Activate environment (includes ROS2)"
 echo "  source activate_env.sh"
 echo ""
 echo "  # Run the Gradio agent"
-echo "  python gradio_agent/demo_tool_calling.py --preload-policy"
+echo "  python ui/gradio_agent/demo_tool_calling.py --preload-policy"
 echo ""
 
-echo -e "${BLUE}📖 For more info, see: INSTALL/UV_INSTALL.md${NC}"
+echo -e "${BLUE}📖 For more info, see: misc/INSTALL/UV_INSTALL.md${NC}"
 echo ""
 
