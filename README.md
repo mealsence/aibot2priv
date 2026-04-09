@@ -33,7 +33,7 @@ git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
 cd lerobot-ros-agent
 
 # Run automated setup (CUDA 12.8 for RTX 40/50 series)
-./misc/INSTALL/setup_with_uv.sh --cuda128
+./INSTALL/setup_with_uv.sh --cuda128
 
 # Activate environment
 source activate_env.sh
