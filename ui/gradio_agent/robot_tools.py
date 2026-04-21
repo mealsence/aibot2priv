@@ -130,68 +130,118 @@ def ensure_rclpy_init():
 
 class GripperController:
     """ROS2-based gripper controller"""
+
+    # MoveIt + ros2_control stack in this repo uses panda_hand_controller + gripper_cmd
+    # (see ros2/.../gripper_moveit_controllers.yaml). Override if your sim exposes a
+    # different name: export ROS_GRIPPER_ACTION=/your_ns/gripper_cmd
+    _DEFAULT_ACTION = "/panda_hand_controller/gripper_cmd"
+
     def __init__(self):
         self.node = None
         self.action_client = None
         self._initialized = False
-    
+        self._gripper_action_name = None
+
     def _ensure_ros_init(self):
         if not self._initialized:
             try:
                 if not ensure_rclpy_init():
                     return False
-                
+
+                self._gripper_action_name = os.environ.get("ROS_GRIPPER_ACTION", self._DEFAULT_ACTION)
                 self.node = Node(f'gripper_controller_{int(time.time())}')
-                self.action_client = ActionClient(self.node, GripperCommand, '/panda_hand_controller/gripper_cmd')
+                self.action_client = ActionClient(self.node, GripperCommand, self._gripper_action_name)
                 self._initialized = True
-                print("🤖 ROS2 gripper controller initialized")
+                print(f"🤖 ROS2 gripper controller initialized ({self._gripper_action_name})")
             except Exception as e:
                 print(f"⚠️ Warning: Could not initialize ROS2 gripper controller: {e}")
                 return False
         return True
+
     def _send_gripper_command(self, position: float, max_effort: float) -> bool:
         if not self._ensure_ros_init():
             return False
-        
-        # Try ROS2 CLI as fallback to avoid context conflicts
-        try:
-            import subprocess
-            import json
-            
-            # Use ROS2 CLI to send the command - this avoids context conflicts
-            # for real panda
-            cmd = [
-                'ros2', 'action', 'send_goal', 
-                '/panda_gripper/gripper_action',
-                'control_msgs/action/GripperCommand',
-                f'{{"command": {{"position": {position}, "max_effort": {max_effort}}}}}',
-                '--feedback'  # Get feedback
-            ]
-            
-            print(f"🔧 Sending gripper command via ROS2 CLI: position={position}, effort={max_effort}")
-            
-            print(f"copmmand: {cmd}")
-            # Run command with timeout
-            result = subprocess.run(
-                cmd, 
-                capture_output=True, 
-                text=True, 
-                timeout=5.0
-            )
 
-            
-            if result.returncode == 0:
-                print("✅ Gripper command sent successfully via ROS2 CLI")
-                return True
+        import json
+
+        action_name = os.environ.get("ROS_GRIPPER_ACTION", self._DEFAULT_ACTION)
+        if self._gripper_action_name != action_name:
+            self._gripper_action_name = action_name
+            self.action_client = ActionClient(self.node, GripperCommand, action_name)
+
+        # 1) Prefer Python ActionClient (same action as MoveIt; avoids wrong CLI action name)
+        try:
+            if self.action_client.wait_for_server(timeout_sec=5.0):
+                goal = GripperCommand.Goal()
+                goal.command.position = position
+                goal.command.max_effort = max_effort
+                print(
+                    f"🔧 Sending gripper command via ActionClient {action_name}: "
+                    f"position={position}, max_effort={max_effort}"
+                )
+                send_future = self.action_client.send_goal_async(goal)
+                t0 = time.time()
+                while not send_future.done() and (time.time() - t0) < 5.0:
+                    rclpy.spin_once(self.node, timeout_sec=0.1)
+                if not send_future.done():
+                    print("⚠️ Gripper: send_goal did not complete in time")
+                else:
+                    goal_handle = send_future.result()
+                    if goal_handle is None or not goal_handle.accepted:
+                        print("⚠️ Gripper: goal rejected by controller")
+                    else:
+                        result_future = goal_handle.get_result_async()
+                        t1 = time.time()
+                        while not result_future.done() and (time.time() - t1) < 30.0:
+                            rclpy.spin_once(self.node, timeout_sec=0.1)
+                        if result_future.done():
+                            print("✅ Gripper command completed (ActionClient)")
+                            return True
+                        print("⚠️ Gripper: result timeout (30s) — simulation may be slow; try increasing timeouts")
             else:
-                print(f"⚠️ ROS2 CLI command failed: {result.stderr}")
-                return False
-                
+                print(
+                    f"⚠️ Gripper action server not available: {action_name}\n"
+                    "   Run: ros2 action list\n"
+                    "   If your sim uses another name, set: export ROS_GRIPPER_ACTION=<that name>"
+                )
+        except Exception as e:
+            print(f"⚠️ Gripper ActionClient failed: {e}")
+
+        # 2) CLI fallback — must use the *same* action name as MoveIt (not /panda_gripper/gripper_action)
+        try:
+            goal_json = json.dumps({"command": {"position": position, "max_effort": max_effort}})
+            cmd = [
+                "ros2",
+                "action",
+                "send_goal",
+                action_name,
+                "control_msgs/action/GripperCommand",
+                goal_json,
+            ]
+            print(f"🔧 Gripper CLI fallback: {' '.join(cmd[:4])} ...")
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=30.0,
+            )
+            if result.returncode == 0:
+                print("✅ Gripper command completed via ROS2 CLI")
+                return True
+            print(f"⚠️ ROS2 CLI gripper failed (code {result.returncode})")
+            if result.stderr:
+                print(f"   stderr: {result.stderr.strip()}")
+            if result.stdout:
+                print(f"   stdout: {result.stdout.strip()}")
+            return False
         except subprocess.TimeoutExpired:
-            print("⚠️ ROS2 CLI command timeout")
+            print(
+                "⚠️ ROS2 CLI gripper timeout (30s). Is the gripper controller running in simulation?\n"
+                "   Check: ros2 action list | grep -i gripper"
+            )
             return False
         except Exception as e:
-            print(f"⚠️ ROS2 CLI fallback failed: {e}")
+            print(f"⚠️ ROS2 CLI gripper fallback failed: {e}")
             return False
 
 

@@ -23,6 +23,20 @@ _CACHE_DIR = Path(__file__).resolve().parent / "_cache"
 _CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _repo_root() -> Path:
+    """lerobot_teleoperator_devices/processors/delta_to_joints.py -> parents[4] == repo root."""
+    return Path(__file__).resolve().parents[4]
+
+
+def _colcon_src_roots(repo_root: Path) -> list[Path]:
+    """Paths where ROS packages live (this repo uses ros2/isaac_franka_moveit_perception/src)."""
+    candidates = [
+        repo_root / "ros2" / "isaac_franka_moveit_perception" / "src",
+        repo_root / "isaac_franka_moveit_perception" / "src",
+    ]
+    return [p for p in candidates if p.is_dir()]
+
+
 def _to_numpy(array_like: Sequence[float]) -> np.ndarray:
     arr = np.asarray(array_like, dtype=float)
     if arr.shape != (3,):
@@ -160,18 +174,26 @@ def set_active_keyboard_ee_config(config: KeyboardEndEffectorTeleopConfig | None
 def _resolve_urdf_path(urdf_path: str) -> str:
     """Return a URDF path with ROS package URLs resolved to absolute file paths."""
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = _repo_root()
+    src_roots = _colcon_src_roots(repo_root)
 
     if urdf_path.startswith("package://"):
-        # Resolve package://panda_description/... inside the repo
+        # Resolve package://panda_description/... under colcon src (ros2/.../src)
         package_prefix = "package://"
         package_path = urdf_path[len(package_prefix) :]
         parts = package_path.split("/", 1)
         package_name = parts[0]
         relative_path = parts[1] if len(parts) > 1 else ""
 
-        package_root = repo_root / package_name
-        resolved_path = package_root / relative_path
+        resolved_path: Path | None = None
+        for src in src_roots:
+            candidate = (src / package_name / relative_path) if relative_path else (src / package_name)
+            if candidate.exists():
+                resolved_path = candidate
+                break
+        if resolved_path is None:
+            legacy = repo_root / package_name / relative_path if relative_path else repo_root / package_name
+            resolved_path = legacy
     else:
         resolved_path = Path(urdf_path).expanduser().resolve()
 
@@ -185,16 +207,24 @@ def _resolve_urdf_path(urdf_path: str) -> str:
     if "package://" in urdf_text:
         cache_path = _CACHE_DIR / (resolved_path.stem + "_resolved.urdf")
 
-        # Replace all package:// references with absolute paths
-        # For isaac_franka_moveit_perception workspace packages
-        isaac_workspace = repo_root / "isaac_franka_moveit_perception" / "src"
-        for package_dir in isaac_workspace.iterdir():
-            if package_dir.is_dir():
-                package_name = package_dir.name
-                urdf_text = urdf_text.replace(
-                    f"package://{package_name}/",
-                    f"{package_dir.as_posix()}/"
-                )
+        # Replace package://pkg/ with absolute paths for each package under colcon src
+        if not src_roots:
+            raise FileNotFoundError(
+                "URDF references package:// meshes but no Isaac/MoveIt source tree was found. "
+                f"Expected one of: "
+                f"{repo_root / 'ros2' / 'isaac_franka_moveit_perception' / 'src'}, "
+                f"{repo_root / 'isaac_franka_moveit_perception' / 'src'}"
+            )
+        for isaac_workspace in src_roots:
+            if not isaac_workspace.is_dir():
+                continue
+            for package_dir in isaac_workspace.iterdir():
+                if package_dir.is_dir():
+                    pkg = package_dir.name
+                    urdf_text = urdf_text.replace(
+                        f"package://{pkg}/",
+                        f"{package_dir.as_posix()}/",
+                    )
 
         cache_path.write_text(urdf_text)
         return str(cache_path)

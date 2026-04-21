@@ -62,6 +62,7 @@ dependencies = [
     # --- LLM Clients ---
     "openai>=1.0.0",
     "google-genai>=1.0.0",
+    "mbodied>=1.5.0,<2.0.0",
     
     # --- Visualization ---
     "matplotlib>=3.8.0,<4.0.0",
@@ -69,6 +70,7 @@ dependencies = [
     "rerun-sdk>=0.23.0,<0.24.0",
     
     # --- Utilities ---
+    "python-dotenv>=1.0.0,<2.0.0",
     "pyyaml>=6.0",
     "jsonlines>=4.0.0,<5.0.0",
     "termcolor>=2.4.0,<4.0.0",
@@ -86,6 +88,8 @@ dependencies = [
     "pyserial>=3.5,<4.0",
     "setuptools>=71.0.0,<81.0.0",
     "cmake>=3.29.0.1,<4.2.0",
+    # LeRobot RobotKinematics (e.g. ui/gradio_agent/robot_tools.py); keep numpy<2.0 above
+    "placo>=0.9.6,<0.10.0",
 ]
 
 # =============================================================================

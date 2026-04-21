@@ -8,8 +8,16 @@ from lerobot.teleoperators.keyboard.configuration_keyboard import KeyboardEndEff
 
 
 def _default_urdf_path() -> str:
-    base_dir = Path(__file__).resolve().parents[4]
-    urdf_path = base_dir / "isaac_franka_moveit_perception" / "src" / "panda_description" / "urdf" / "panda.urdf"
+    repo_root = Path(__file__).resolve().parents[3]
+    urdf_path = (
+        repo_root
+        / "ros2"
+        / "isaac_franka_moveit_perception"
+        / "src"
+        / "panda_description"
+        / "urdf"
+        / "panda.urdf"
+    )
     return str(urdf_path)
 
 

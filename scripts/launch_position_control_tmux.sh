@@ -5,7 +5,12 @@ SESSION_NAME="moveit"
 # Get the directory where the script is located
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
-WORKSPACE_DIR="$SCRIPT_DIR/isaac_franka_moveit_perception"
+WORKSPACE_DIR="$SCRIPT_DIR/../ros2/isaac_franka_moveit_perception"
+
+if [ ! -d "$WORKSPACE_DIR" ]; then
+    echo "Error: ROS2 workspace not found at $WORKSPACE_DIR"
+    exit 1
+fi
 
 tmux has-session -t $SESSION_NAME 2>/dev/null
 if [ $? != 0 ]; then

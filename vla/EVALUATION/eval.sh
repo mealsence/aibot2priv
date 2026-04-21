@@ -154,7 +154,7 @@ TELEOP_TYPE="${LEROBOT_TELEOP_TYPE:-spacemouse_ee_panda}"
 TELEOP_ID="${LEROBOT_TELEOP_ID:-my_spacemouse_leader}"
 
 # Episode timing
-EPISODE_TIME_S="${LEROBOT_EPISODE_TIME_S:-30}"
+EPISODE_TIME_S="${LEROBOT_EPISODE_TIME_S:-60}"
 RESET_TIME_S="${LEROBOT_RESET_TIME_S:-60}"
 
 # Dataset recording settings
@@ -163,7 +163,7 @@ DISPLAY_DATA="${LEROBOT_DISPLAY_DATA:-true}"
 DATASET_VIDEO="${LEROBOT_DATASET_VIDEO:-true}"
 
 # Hub settings (disabled for evaluation - keep data local)
-DATASET_PUSH="${LEROBOT_EVAL_PUSH:-true}"
+DATASET_PUSH="${LEROBOT_EVAL_PUSH:-false}"
 DATASET_PRIVATE="${LEROBOT_DATASET_PRIVATE:-false}"
 
 # Performance optimization: Image writer settings
@@ -214,14 +214,26 @@ echo ""
 # Give user a chance to cancel if something looks wrong
 sleep 3
 
+# Reduce noisy library HTTP/info logging during evaluation (overridable by env).
+export HF_HUB_VERBOSITY="${HF_HUB_VERBOSITY:-error}"
+export TRANSFORMERS_VERBOSITY="${TRANSFORMERS_VERBOSITY:-error}"
+
 # ============================================================================
 # RUN EVALUATION
 # ============================================================================
 
 # NOTE: For Isaac Sim + ROS2 robots, use lerobot-record with --policy.path
 # (NOT lerobot-eval, which is only for gym-based simulation environments)
+#
+# Register ROS2 robot/teleop configs (panda_ros_*, spacemouse_*, etc.). LeRobot's
+# auto-discovery only imports PyPI names starting with lerobot_robot_; our packages
+# are named lerobot-robot-ros / lerobot-teleoperator-devices, so we must load them explicitly.
 
-exec lerobot-record \
+# Filter noisy low-value HTTP request spam from httpx/huggingface_hub while
+# keeping all other warnings/errors visible.
+lerobot-record \
+  --robot.discover_packages_path=lerobot_robot_ros \
+  --teleop.discover_packages_path=lerobot_teleoperator_devices \
   --robot.type="${ROBOT_TYPE}" \
   --robot.id="${ROBOT_ID}" \
   --teleop.type="${TELEOP_TYPE}" \
@@ -241,4 +253,4 @@ exec lerobot-record \
   --dataset.num_image_writer_threads_per_camera="${NUM_IMAGE_WRITER_THREADS}" \
   --dataset.video_encoding_batch_size="${VIDEO_ENCODING_BATCH_SIZE}" \
   --display_data="${DISPLAY_DATA}" \
-  "$@"
+  "$@" 2>&1 | sed '/_client.py:1025 HTTP Request:/d'

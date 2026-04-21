@@ -51,6 +51,23 @@ cd ../../REAL_ROBOT && ./launch_realsense_camera.sh
 LEROBOT_ROBOT_TYPE=panda_ros ./record_spacemouse_ee.sh
 ```
 
+**Option C — Polymetis joint-space control**:
+
+```bash
+# Terminal 1 (on the NUC): Polymetis hardware services
+launch_robot.py robot_client=franka_hardware
+launch_gripper.py gripper=franka_hand
+
+# Terminal 2 (on the NUC): zerorpc bridge to Polymetis
+python -m REAL_ROBOT.polymetis.server --controller-host localhost
+
+# Terminal 3 (on the workstation): SpaceMouse driver
+ros2 run spacenav spacenav_node
+
+# Terminal 4 (on the workstation): Record data
+./record_spacemouse_ee_fast_polymetis.sh
+```
+
 ---
 
 ## Recording Scripts
@@ -60,6 +77,7 @@ LEROBOT_ROBOT_TYPE=panda_ros ./record_spacemouse_ee.sh
 | `record_spacemouse_cartesian_vel_real.sh` | `panda_ros_cartesian` | Real robot; Cartesian velocity control, SpaceMouse teleop |
 | `record_spacemouse_ee.sh` | `panda_ros` (trajectory) | Simulation or real robot; smooth motion, ~100ms latency |
 | `record_spacemouse_ee_fast.sh` | `panda_ros_position` (position) | Simulation only; ultra-low latency (~15–20ms) |
+| `record_spacemouse_ee_fast_polymetis.sh` | `polymetis_franka` | Real robot via Polymetis; SpaceMouse EE teleop converted to joint targets |
 
 ### `record_spacemouse_cartesian_vel_real.sh`
 
@@ -82,6 +100,14 @@ LEROBOT_ROBOT_TYPE=panda_ros ./record_spacemouse_ee.sh
 - **Default dataset**: `~/lerobot_datasets/Isaac_Panda_PickCube_SpaceMouse_EE_fast_100episodes`
 - **Default repo**: `ases200q2/Isaac_Panda_PickCube_SpaceMouse_EE_fast_100episodes`
 - **Tuning**: Exposes SpaceMouse sensitivity (`linear_step_m`, `dead_zone`, `gripper_step`)
+
+### `record_spacemouse_ee_fast_polymetis.sh`
+
+- **Robot**: `polymetis_franka` via `REAL_ROBOT/polymetis/examples/collect_data.py`
+- **Best for**: Real Franka with Polymetis bringup already running
+- **Default dataset**: `~/lerobot_datasets/Real_Panda_Polymetis_SpaceMouse_EE_Fast`
+- **Default repo**: `ases200q2/Real_Panda_Polymetis_SpaceMouse_EE_Fast`
+- **Camera**: OpenCV camera source on the workstation, configured with `LEROBOT_CAMERA_SOURCE`
 
 ---
 
@@ -142,6 +168,17 @@ When `LEROBOT_CAMERA_TOPICS` and `LEROBOT_CAMERA_TOPIC` are not set, `record_spa
 | `LEROBOT_TELEOP_LINEAR_STEP_M` | Movement step (meters) | `0.01` |
 | `LEROBOT_TELEOP_DEAD_ZONE` | Input dead zone | `0.01` |
 | `LEROBOT_TELEOP_GRIPPER_STEP` | Gripper step | `0.001` |
+
+### Polymetis Recorder (`record_spacemouse_ee_fast_polymetis.sh`)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LEROBOT_POLYMETIS_DIRECT` | Use direct gRPC instead of zerorpc | `false` |
+| `LEROBOT_POLYMETIS_SERVER_HOST` | zerorpc host | `192.168.1.2` |
+| `LEROBOT_POLYMETIS_SERVER_PORT` | zerorpc port | `4242` |
+| `LEROBOT_POLYMETIS_CONTROLLER_HOST` | Direct Polymetis controller host | `localhost` |
+| `LEROBOT_CAMERA_SOURCE` | OpenCV camera source | `0` |
+| `LEROBOT_CAMERA_NAME` | Dataset camera key | `cam_left_wrist` |
 
 ### Camera (when using panda_ros / panda_ros_position)
 

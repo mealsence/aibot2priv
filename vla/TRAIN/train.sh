@@ -69,7 +69,9 @@ export PYTORCH_ALLOC_CONF=expandable_segments:True
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
 # Set model repo ID with timestamp and policy type
-MODEL_REPO_ID="${HF_USER:-TInkybala}/Real_Panda_test_${POLICY_TYPE}_${TIMESTAMP}"
+#MODEL_REPO_ID="${HF_USER:-TInkybala}/Real_Panda_test_${POLICY_TYPE}_${TIMESTAMP}"
+MODEL_REPO_ID="${HF_USER:-ases200q2}/Isaac_panda_pick_cube_${POLICY_TYPE}_${TIMESTAMP}"
+
 
 # Determine training command based on policy type
 # PI05 uses custom script with 8-bit optimizer for memory efficiency
@@ -85,18 +87,18 @@ fi
 
 # Add common training arguments
 TRAIN_CMD+=(
-  --dataset.repo_id="TInkybala/PickCubeVLA0"
+  --dataset.repo_id="ases200q2/Isaac_Panda_PickCube_SpaceMouse_EE_fast_100episodes"
   --dataset.streaming=false
   --dataset.video_backend=pyav
   --output_dir="outputs/train/${MODEL_REPO_ID//\//_}"
-  --job_name="real_panda_PickCubeVLA0_${POLICY_TYPE}"
+  --job_name="${MODEL_REPO_ID//\//_}"
   --policy.device=cuda
   --wandb.enable=true
   --policy.push_to_hub=true
   --policy.repo_id="${MODEL_REPO_ID}"
-  --batch_size=8
-  --steps=20000
-  --save_freq=5000
+  --batch_size=32
+  --steps=40000
+  --save_freq=10000
 )
 
 # Add policy-specific configuration

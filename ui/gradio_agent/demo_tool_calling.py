@@ -7,6 +7,16 @@ It demonstrates direct LLM tool calling with immediate execution.
 """
 
 import argparse
+import os
+import socket
+import sys
+from pathlib import Path
+
+# Allow `python ui/gradio_agent/demo_tool_calling.py` from repo root
+_GRADIO_AGENT_DIR = Path(__file__).resolve().parent
+if str(_GRADIO_AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(_GRADIO_AGENT_DIR))
+
 import gradio as gr
 import tempfile
 from gtts import gTTS
@@ -14,11 +24,9 @@ import rclpy
 import base64
 import json
 import io
-from pathlib import Path
 
 import openai
 from openai import OpenAI
-import os
 from google import genai
 from typing import Optional, List, Dict, Tuple
 import numpy as np
@@ -40,7 +48,7 @@ from utils import determine_pause  # pause detection
 from speaking import speaking  # streaming TTS stub
 from simple_camera_stream import CameraStreamer  # Live camera streaming
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = _GRADIO_AGENT_DIR.parents[1]
 
 # monkey patch to make function_to_tools output work with lists
 def patch_tool_schema(tool):
@@ -65,7 +73,35 @@ parser.add_argument('--preload-policy', action='store_true',
                     help='Pre-load VLA policy at startup instead of on first use (default: False)')
 parser.add_argument('--discover-arm-server', action='store_true',
                     help='Run action server discovery at startup instead of using position topic directly (default: False, uses faster position topic)')
+parser.add_argument(
+    '--port',
+    type=int,
+    default=None,
+    metavar='PORT',
+    help='Gradio HTTP port (default: first free port starting at 7868, or GRADIO_SERVER_PORT)',
+)
 args = parser.parse_args()
+
+
+def resolve_gradio_port(cli_port: int | None, span: int = 64) -> int:
+    """First free TCP port starting at CLI, then GRADIO_SERVER_PORT, then 7868."""
+    if cli_port is not None:
+        preferred = cli_port
+    else:
+        raw = os.environ.get("GRADIO_SERVER_PORT", "").strip()
+        preferred = int(raw) if raw else 7868
+    for port in range(preferred, preferred + span):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError(
+        f"No free TCP port in range {preferred}-{preferred + span - 1}. "
+        "Stop the process using that port, or pass --port / set GRADIO_SERVER_PORT."
+    )
 
 # System prompt file for tool calling
 tool_calling_system_prompt = "system_prompt_tool_calling.txt"
@@ -1352,7 +1388,9 @@ if __name__ == "__main__":
             preload_vla_policy()
 
         interface = create_gradio_interface()
-        interface.launch(server_name="0.0.0.0", server_port=7868, share=True)
+        server_port = resolve_gradio_port(args.port)
+        print(f"🌐 Gradio server port: {server_port} (http://0.0.0.0:{server_port}/)")
+        interface.launch(server_name="0.0.0.0", server_port=server_port, share=True)
     finally:
         # Clean up ROS nodes
         if rclpy.ok():
