@@ -1,0 +1,45 @@
+## Polymetis Bringup Notes
+
+Use these commands to restart Polymetis services cleanly and bring up the Franka hardware stack.
+
+```bash
+# Activate environment
+conda activate polymetis-local
+pkill -f run_server
+pkill -f franka_panda_client
+launch_robot.py robot_client=franka_hardware
+
+
+conda activate polymetis-local
+launch_gripper.py gripper=franka_hand
+
+
+conda activate polymetis-local
+python ~/fairo-franka/polymetis/polymetis/python/polymetis/franka_interface_server.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Start [launch_robot](https://github.com/Shenzhaolong1330/fairo-franka/blob/main/polymetis/polymetis/python/scripts/launch_robot.py), [launch_gripper](https://github.com/Shenzhaolong1330/fairo-franka/blob/main/polymetis/polymetis/python/scripts/launch_gripper.py), and [franka_interface_server](https://github.com/Shenzhaolong1330/fairo-franka/blob/main/polymetis/polymetis/python/polymetis/franka_interface_server.py) in separate terminals.
+
+```bash
+# On the NUC
+python launch_robot.py robot_client=franka_hardware
+python launch_gripper.py gripper=franka_hand
+python franka_interface_server.py
+```

@@ -14,7 +14,9 @@
 
 import logging
 import time
+from contextlib import redirect_stderr
 from functools import cached_property
+from io import StringIO
 from typing import Any
 
 from lerobot.cameras.utils import make_cameras_from_configs
@@ -27,8 +29,9 @@ from .ros_interface import ROS2Interface
 
 # Import ROS2Camera for type checking
 try:
-    from .ros2_camera import ROS2Camera
-except ImportError:
+    with redirect_stderr(StringIO()):
+        from .ros2_camera import ROS2Camera
+except Exception:
     ROS2Camera = None  # type: ignore
 
 logger = logging.getLogger(__name__)

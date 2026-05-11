@@ -16,7 +16,7 @@
 homepage = "https://github.com/<YOUR_USERNAME>/lerobot-ros-agent"
 
 [project]
-name = "lerobot-robot-ros"
+name = "lerobot_robot_ros"
 version = "0.1.0"
 description = "🤗 A lightweight ROS 2 wrapper for lerobot"
 authors = [
