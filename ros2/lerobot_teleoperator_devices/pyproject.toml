@@ -38,6 +38,8 @@ classifiers = [
 dependencies = [
     "lerobot",
     "rclpy",
+    "geometry_msgs",
+    "rosidl_runtime_py",
     "sensor_msgs",
 ]
 

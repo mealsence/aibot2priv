@@ -95,6 +95,17 @@ class Aibot2Config(RobotConfig):
     left_gripper_cmd_topic: str = "/left_gripper_direct_cmd"
     right_gripper_cmd_topic: str = "/right_gripper_direct_cmd"
 
+    # If False, send_action() records/returns actions but does not publish robot
+    # commands. Use this when an external VR/internal controller already executes
+    # the target poses while LeRobot only records data.
+    execute_actions: bool = True
+    # How send_action() executes arm pose actions:
+    # - "direct": publish separate PoseStamped commands to each arm.
+    # - "control_poses_target": publish a PoseArray to the VR/internal driver path.
+    action_output_mode: str = "direct"
+    control_poses_target_topic: str = "/control_poses_target"
+    control_poses_target_frame_id: str = "base_link"
+
     # --- Joint state topic ---
     joint_state_topic: str = "/joint_states"
 

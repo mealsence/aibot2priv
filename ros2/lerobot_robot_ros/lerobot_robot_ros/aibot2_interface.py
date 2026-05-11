@@ -4,7 +4,7 @@ import threading
 import time
 
 import rclpy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
@@ -32,6 +32,7 @@ class Aibot2Interface:
 
         self._left_arm_pub = None
         self._right_arm_pub = None
+        self._control_poses_target_pub = None
         self._left_gripper_pub = None
         self._right_gripper_pub = None
         self._joint_state_sub = None
@@ -59,6 +60,9 @@ class Aibot2Interface:
         )
         self._right_arm_pub = self.node.create_publisher(
             PoseStamped, self.config.right_arm_cmd_topic, 10
+        )
+        self._control_poses_target_pub = self.node.create_publisher(
+            PoseArray, self.config.control_poses_target_topic, 10
         )
 
         # Gripper command publishers (Float64)
@@ -156,6 +160,35 @@ class Aibot2Interface:
         msg.pose.orientation.w = qw
         self._right_arm_pub.publish(msg)
 
+    def send_control_poses_target(
+        self,
+        left_pose: dict[str, float],
+        right_pose: dict[str, float],
+    ) -> None:
+        if self._control_poses_target_pub is None:
+            raise RuntimeError("Aibot2Interface not connected")
+
+        msg = PoseArray()
+        msg.header.stamp = self.node.get_clock().now().to_msg()
+        msg.header.frame_id = self.config.control_poses_target_frame_id
+        msg.poses = [
+            self._dict_to_pose(left_pose),
+            self._dict_to_pose(right_pose),
+        ]
+        self._control_poses_target_pub.publish(msg)
+
+    @staticmethod
+    def _dict_to_pose(values: dict[str, float]) -> Pose:
+        pose = Pose()
+        pose.position.x = float(values["x"])
+        pose.position.y = float(values["y"])
+        pose.position.z = float(values["z"])
+        pose.orientation.x = float(values["qx"])
+        pose.orientation.y = float(values["qy"])
+        pose.orientation.z = float(values["qz"])
+        pose.orientation.w = float(values["qw"])
+        return pose
+
     def send_left_gripper_command(self, value: float) -> None:
         if self._left_gripper_pub is None:
             raise RuntimeError("Aibot2Interface not connected")
@@ -182,12 +215,13 @@ class Aibot2Interface:
             self._joint_state_sub.destroy()
             self._joint_state_sub = None
 
-        for pub in [self._left_arm_pub, self._right_arm_pub,
+        for pub in [self._left_arm_pub, self._right_arm_pub, self._control_poses_target_pub,
                     self._left_gripper_pub, self._right_gripper_pub]:
             if pub:
                 pub.destroy()
         self._left_arm_pub = None
         self._right_arm_pub = None
+        self._control_poses_target_pub = None
         self._left_gripper_pub = None
         self._right_gripper_pub = None
 

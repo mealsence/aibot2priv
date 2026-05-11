@@ -170,6 +170,36 @@ class Aibot2(Robot):
         if not self.is_connected:
             raise DeviceNotConnectedError(f"{self} is not connected.")
 
+        if not self.config.execute_actions:
+            return action
+
+        if self.config.action_output_mode == "control_poses_target":
+            self.interface.send_control_poses_target(
+                left_pose={
+                    "x": float(action["left_arm.x"]),
+                    "y": float(action["left_arm.y"]),
+                    "z": float(action["left_arm.z"]),
+                    "qx": float(action["left_arm.qx"]),
+                    "qy": float(action["left_arm.qy"]),
+                    "qz": float(action["left_arm.qz"]),
+                    "qw": float(action["left_arm.qw"]),
+                },
+                right_pose={
+                    "x": float(action["right_arm.x"]),
+                    "y": float(action["right_arm.y"]),
+                    "z": float(action["right_arm.z"]),
+                    "qx": float(action["right_arm.qx"]),
+                    "qy": float(action["right_arm.qy"]),
+                    "qz": float(action["right_arm.qz"]),
+                    "qw": float(action["right_arm.qw"]),
+                },
+            )
+            self._send_gripper_commands(action)
+            return action
+
+        if self.config.action_output_mode != "direct":
+            raise ValueError(f"Unsupported AIBOT2 action_output_mode: {self.config.action_output_mode!r}")
+
         # Send left arm pose
         self.interface.send_left_arm_pose(
             x=float(action["left_arm.x"]),
@@ -192,6 +222,11 @@ class Aibot2(Robot):
             qw=float(action["right_arm.qw"]),
         )
 
+        self._send_gripper_commands(action)
+
+        return action
+
+    def _send_gripper_commands(self, action: dict[str, float]) -> None:
         # Send gripper commands (normalize 0-1 to actual range)
         left_grip = float(action.get("left_gripper.pos", 0.0))
         left_actual = (
@@ -206,8 +241,6 @@ class Aibot2(Robot):
             + right_grip * (self.config.right_gripper_close_position - self.config.right_gripper_open_position)
         )
         self.interface.send_right_gripper_command(right_actual)
-
-        return action
 
     def disconnect(self) -> None:
         if not self.is_connected:

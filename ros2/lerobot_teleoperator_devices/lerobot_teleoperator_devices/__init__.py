@@ -2,7 +2,9 @@ from .config_keyboard_joint import KeyboardJointPandaTeleopConfig, KeyboardJoint
 from .config_keyboard_ee_panda import KeyboardEEPandaTeleopConfig
 from .config_spacemouse_ee_panda import SpaceMouseEEPandaTeleopConfig
 from .config_spacemouse_cartesian_vel_panda import SpaceMouseCartesianVelTeleopConfig
+from .config_vr_aibot2 import VRAibot2TeleopConfig
 from .keyboard_ee_panda import KeyboardEEPandaTeleop
 from .keyboard_joint import KeyboardJointPandaTeleop, KeyboardJointTeleop
 from .spacemouse_ee_panda import SpaceMouseEEPandaTeleop
 from .spacemouse_cartesian_vel_panda import SpaceMouseCartesianVelTeleop
+from .vr_aibot2 import VRAibot2Teleop
