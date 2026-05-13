@@ -1,0 +1,39 @@
+record_aibot2
+
+
+How to verify on hardware (ROS 2)
+After sourcing your workspace (same as when you run eval):
+
+Confirm subscribers exist (someone must subscribe or commands have no effect):
+
+ros2 topic info /left_gripper_direct_cmd
+
+Echo while running eval (you should see data move with policy):
+
+ros2 topic echo /left_gripper_direct_cmd --once
+(repeat or remove --once while the policy runs.)
+
+Manual open/close test (adjust std_msgs/msg/Float64 if your interface differs):
+
+ros2 topic pub 
+
+
+
+
+What we’re checking
+LeRobot’s AIBOT2 bridge publishes gripper goals on two topics, using std_msgs/msg/Float64 (msg.data is the scalar). For anything to move, some other node in your robot stack must subscribe to those same topics (or you must remap so your publisher ends up on the topic that node actually listens to).
+
+So “grep the bringup repo” means: find the source of truth in your robot software — launch files, URDF bridges, rclcpp::create_subscription / create_subscription in Python — and read:
+
+Exact topic strings (e.g. /left_gripper_direct_cmd vs /alphabot/left_gripper/command).
+Message type (must be std_msgs/msg/Float64 if that’s what LeRobot sends; if the driver expects trajectory_msgs/JointTrajectory or a custom msg, types won’t match and ROS 2 won’t connect publisher and subscriber).
+If names or types don’t match, you can still “see” publishes in ros2 topic echo on LeRobot’s side, but no subscriber will receive them — or you’ll have the wrong subscriber — and it will look like “gripper commands don’t work.”
+
+Why grep “bringup” specifically
+Bringup packages usually contain launch and node code that wires topics together. Searching for gripper, direct_cmd, Float64, JointState, etc. there is faster than guessing from LeRobot defaults.
+
+What we’d do with the result
+Same name + Float64: LeRobot defaults are aligned; if motion is still wrong, it’s mapping (open/close values) or controller logic, not wiring.
+Different name: set LeRobot’s --robot.left_gripper_cmd_topic / right_... (or env) to the names your stack uses, or add a ROS remap in launch.
+Different type: you need either a small relay node (subscribe to one type, publish the other) or to extend the LeRobot interface to publish the type your driver expects.
+That repo is often not inside lerobot-ros-agent; it’s usually a separate workspace (e.g. alphabot2_bringup, aibot2_control). If you point Cursor at that repo path (or paste a clone path), we can run the same grep there and compare line‑by‑line to aibot2_config.py’s left_gripper_cmd_topic / right_gripper_cmd_topic.

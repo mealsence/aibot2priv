@@ -109,8 +109,10 @@ class Aibot2Config(RobotConfig):
     # --- Joint state topic ---
     joint_state_topic: str = "/joint_states"
 
-    # --- Gripper range (raw joint values from /joint_states) ---
-    left_gripper_open_position: float = 0.0
-    left_gripper_close_position: float = 1.0
-    right_gripper_open_position: float = 0.0
-    right_gripper_close_position: float = 1.0
+    # --- Gripper range (raw values published as Float64 on *gripper_cmd_topic) ---
+    # Must match VR teleop joint normalization (config_vr_aibot2 gripper_open/close_value)
+    # and AIBOT2 2FEG_* joint positions from /joint_states (open ~0.8, closed ~0.0).
+    left_gripper_open_position: float = 0.8
+    left_gripper_close_position: float = 0.0
+    right_gripper_open_position: float = 0.8
+    right_gripper_close_position: float = 0.0
