@@ -89,6 +89,7 @@ detected_objects/
 # Gradio
 .gradio/
 
+.hf_lerobot/
 
 franka_ros2_i2r@franka
 .claude/worktrees/
