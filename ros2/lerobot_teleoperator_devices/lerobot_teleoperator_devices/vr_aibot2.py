@@ -10,7 +10,7 @@ from geometry_msgs.msg import Pose, PoseArray, PoseStamped
 from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from rosidl_runtime_py.utilities import get_message
-from sensor_msgs.msg import JointState
+from std_msgs.msg import Int64MultiArray
 
 from lerobot.teleoperators import Teleoperator
 from lerobot.utils.errors import DeviceAlreadyConnectedError, DeviceNotConnectedError
@@ -65,7 +65,7 @@ class VRAibot2Teleop(Teleoperator):
 
         self._ros_node: Node | None = None
         self._target_subscription = None
-        self._gripper_joint_state_subscription = None
+        self._hand_state_subscription = None
         self._executor: SingleThreadedExecutor | None = None
         self._executor_thread: threading.Thread | None = None
 
@@ -127,10 +127,10 @@ class VRAibot2Teleop(Teleoperator):
             self._target_callback,
             10,
         )
-        self._gripper_joint_state_subscription = self._ros_node.create_subscription(
-            JointState,
-            self.config.gripper_joint_state_topic,
-            self._gripper_joint_state_callback,
+        self._hand_state_subscription = self._ros_node.create_subscription(
+            Int64MultiArray,
+            self.config.hand_state_topic,
+            self._hand_state_callback,
             10,
         )
 
@@ -170,21 +170,14 @@ class VRAibot2Teleop(Teleoperator):
             self._latest_action = action
             self._has_message = True
 
-    def _gripper_joint_state_callback(self, msg: JointState) -> None:
+    def _hand_state_callback(self, msg: Int64MultiArray) -> None:
         try:
-            name_to_idx = {name: i for i, name in enumerate(msg.name)}
-            left_idx = name_to_idx[self.config.left_gripper_joint_name]
-            right_idx = name_to_idx[self.config.right_gripper_joint_name]
-            left_raw = float(msg.position[left_idx])
-            right_raw = float(msg.position[right_idx])
-            left_gripper = self._normalize_gripper(left_raw)
-            right_gripper = self._normalize_gripper(right_raw)
+            left_raw = float(msg.data[self.config.hand_state_left_index])
+            right_raw = float(msg.data[self.config.hand_state_right_index])
+            left_gripper = self._normalize_hand_gripper(left_raw)
+            right_gripper = self._normalize_hand_gripper(right_raw)
         except Exception as exc:
-            logger.warning(
-                "Ignoring malformed gripper joint state on %s: %s",
-                self.config.gripper_joint_state_topic,
-                exc,
-            )
+            logger.warning("Ignoring malformed hand states on %s: %s", self.config.hand_state_topic, exc)
             return
 
         with self._action_lock:
@@ -193,9 +186,9 @@ class VRAibot2Teleop(Teleoperator):
             self._latest_action["left_gripper.pos"] = left_gripper
             self._latest_action["right_gripper.pos"] = right_gripper
 
-    def _normalize_gripper(self, raw_value: float) -> float:
-        open_value = float(self.config.gripper_open_value)
-        close_value = float(self.config.gripper_close_value)
+    def _normalize_hand_gripper(self, raw_value: float) -> float:
+        open_value = float(self.config.hand_state_open_value)
+        close_value = float(self.config.hand_state_close_value)
         if open_value == close_value:
             return 0.0
         normalized = (open_value - float(raw_value)) / (open_value - close_value)
@@ -256,12 +249,12 @@ class VRAibot2Teleop(Teleoperator):
                 pass
             self._target_subscription = None
 
-        if self._gripper_joint_state_subscription is not None:
+        if self._hand_state_subscription is not None:
             try:
-                self._gripper_joint_state_subscription.destroy()
+                self._hand_state_subscription.destroy()
             except Exception:
                 pass
-            self._gripper_joint_state_subscription = None
+            self._hand_state_subscription = None
 
         if self._executor is not None:
             try:

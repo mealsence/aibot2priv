@@ -138,6 +138,7 @@ class Aibot2(Robot):
             raise ValueError("Joint state is not available yet.")
 
         obs_dict.update({f"{joint}.pos": pos for joint, pos in joint_state["position"].items()})
+        self._normalize_gripper_observation_inplace(obs_dict)
 
         def read_camera(cam_key: str, cam) -> tuple[str, Any, float]:
             start = time.perf_counter()
@@ -165,6 +166,34 @@ class Aibot2(Robot):
                 logger.debug("%s read %s: %.1fms", self, cam_key, dt_ms)
 
         return obs_dict
+
+    def _normalize_gripper_observation_inplace(self, obs_dict: dict[str, Any]) -> None:
+        """Optionally normalize gripper observation to action convention: 0=open, 1=closed."""
+        if not self.config.normalize_gripper_observation:
+            return
+
+        left_key = f"{self.config.left_gripper_joint_name}.pos"
+        right_key = f"{self.config.right_gripper_joint_name}.pos"
+
+        if left_key in obs_dict:
+            obs_dict[left_key] = self._normalize_gripper_position(
+                raw_value=float(obs_dict[left_key]),
+                open_position=float(self.config.left_gripper_open_position),
+                close_position=float(self.config.left_gripper_close_position),
+            )
+        if right_key in obs_dict:
+            obs_dict[right_key] = self._normalize_gripper_position(
+                raw_value=float(obs_dict[right_key]),
+                open_position=float(self.config.right_gripper_open_position),
+                close_position=float(self.config.right_gripper_close_position),
+            )
+
+    @staticmethod
+    def _normalize_gripper_position(raw_value: float, open_position: float, close_position: float) -> float:
+        if open_position == close_position:
+            return 0.0
+        normalized = (open_position - raw_value) / (open_position - close_position)
+        return float(max(0.0, min(1.0, normalized)))
 
     def send_action(self, action: dict[str, float]) -> dict[str, float]:
         if not self.is_connected:
@@ -227,15 +256,15 @@ class Aibot2(Robot):
         return action
 
     def _send_gripper_commands(self, action: dict[str, float]) -> None:
-        # Send gripper commands (normalize 0-1 to actual range)
-        left_grip = float(action.get("left_gripper.pos", 0.0))
+        # Send gripper commands (unnormalize 0=open, 1=closed to actual range).
+        left_grip = max(0.0, min(1.0, float(action.get("left_gripper.pos", 0.0))))
         left_actual = (
             self.config.left_gripper_open_position
             + left_grip * (self.config.left_gripper_close_position - self.config.left_gripper_open_position)
         )
         self.interface.send_left_gripper_command(left_actual)
 
-        right_grip = float(action.get("right_gripper.pos", 0.0))
+        right_grip = max(0.0, min(1.0, float(action.get("right_gripper.pos", 0.0))))
         right_actual = (
             self.config.right_gripper_open_position
             + right_grip * (self.config.right_gripper_close_position - self.config.right_gripper_open_position)

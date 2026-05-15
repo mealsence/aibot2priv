@@ -1,0 +1,115 @@
+{
+    "codebase_version": "v3.0",
+    "robot_type": "franka",
+    "total_episodes": 0,
+    "total_frames": 0,
+    "total_tasks": 0,
+    "chunks_size": 1000,
+    "data_files_size_in_mb": 100,
+    "video_files_size_in_mb": 200,
+    "fps": 15,
+    "splits": {},
+    "data_path": "data/chunk-{chunk_index:03d}/file-{file_index:03d}.parquet",
+    "video_path": "videos/{video_key}/chunk-{chunk_index:03d}/file-{file_index:03d}.mp4",
+    "features": {
+        "action": {
+            "dtype": "float32",
+            "shape": [
+                7
+            ],
+            "names": [
+                "delta_ee_pose.x",
+                "delta_ee_pose.y",
+                "delta_ee_pose.z",
+                "delta_ee_pose.rx",
+                "delta_ee_pose.ry",
+                "delta_ee_pose.rz",
+                "gripper_cmd_bin"
+            ]
+        },
+        "observation.state": {
+            "dtype": "float32",
+            "shape": [
+                15
+            ],
+            "names": [
+                "joint_1.pos",
+                "joint_2.pos",
+                "joint_3.pos",
+                "joint_4.pos",
+                "joint_5.pos",
+                "joint_6.pos",
+                "joint_7.pos",
+                "gripper_state_norm",
+                "gripper_cmd_bin",
+                "ee_pose.x",
+                "ee_pose.y",
+                "ee_pose.z",
+                "ee_pose.rx",
+                "ee_pose.ry",
+                "ee_pose.rz"
+            ]
+        },
+        "observation.images.wrist_image": {
+            "dtype": "video",
+            "shape": [
+                240,
+                424,
+                3
+            ],
+            "names": [
+                "height",
+                "width",
+                "channels"
+            ]
+        },
+        "observation.images.exterior_image": {
+            "dtype": "video",
+            "shape": [
+                240,
+                424,
+                3
+            ],
+            "names": [
+                "height",
+                "width",
+                "channels"
+            ]
+        },
+        "timestamp": {
+            "dtype": "float32",
+            "shape": [
+                1
+            ],
+            "names": null
+        },
+        "frame_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null
+        },
+        "episode_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null
+        },
+        "index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null
+        },
+        "task_index": {
+            "dtype": "int64",
+            "shape": [
+                1
+            ],
+            "names": null
+        }
+    }
+}

@@ -23,11 +23,11 @@ class VRAibot2TeleopConfig(TeleoperatorConfig):
     # Additional poses, such as headset/body references, are ignored by default.
     left_pose_index: int = 0
     right_pose_index: int = 1
-    gripper_joint_state_topic: str = "/joint_states"
-    left_gripper_joint_name: str = "2FEG_l_Joint1"
-    right_gripper_joint_name: str = "2FEG_r_Joint1"
-    gripper_open_value: float = 0.8
-    gripper_close_value: float = 0.0
+    hand_state_topic: str = "/hand_states"
+    hand_state_left_index: int = 0
+    hand_state_right_index: int = 1
+    hand_state_open_value: float = 800.0
+    hand_state_close_value: float = 0.0
     left_gripper_default: float = 0.0
     right_gripper_default: float = 0.0
     initial_message_timeout_s: float = 5.0

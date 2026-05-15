@@ -35,8 +35,8 @@ fi
 export PYTHONPATH="${PROJECT_ROOT}/ros2/lerobot_robot_ros:${PROJECT_ROOT}/ros2/lerobot_teleoperator_devices:${PYTHONPATH:-}"
 
 # ---------- Dataset settings ----------
-DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_pick_object_from_table_v4}"
-DATASET_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/Aibot2_pick_object_from_table_v4}"
+DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_pick_object_from_table_v6}"
+DATASET_ROOT="${LEROBOT_DATASET_ROOT:-${HOME}/lerobot_datasets/Aibot2_pick_object_from_table_v6}"
 SINGLE_TASK="${LEROBOT_SINGLE_TASK:-Pick object from table}"
 NUM_EPISODES="${LEROBOT_NUM_EPISODES:-50}"
 EPISODE_TIME_S="${LEROBOT_EPISODE_TIME_S:-60}"
@@ -55,12 +55,13 @@ TELEOP_TARGET_TOPIC="${LEROBOT_TELEOP_TARGET_TOPIC:-/control_poses_target}"
 TELEOP_MESSAGE_TYPE="${LEROBOT_TELEOP_MESSAGE_TYPE:-geometry_msgs/msg/PoseArray}"
 TELEOP_LEFT_POSE_INDEX="${LEROBOT_TELEOP_LEFT_POSE_INDEX:-0}"
 TELEOP_RIGHT_POSE_INDEX="${LEROBOT_TELEOP_RIGHT_POSE_INDEX:-1}"
-TELEOP_GRIPPER_JOINT_STATE_TOPIC="${LEROBOT_TELEOP_GRIPPER_JOINT_STATE_TOPIC:-/joint_states}"
-TELEOP_LEFT_GRIPPER_JOINT="${LEROBOT_TELEOP_LEFT_GRIPPER_JOINT:-2FEG_l_Joint1}"
-TELEOP_RIGHT_GRIPPER_JOINT="${LEROBOT_TELEOP_RIGHT_GRIPPER_JOINT:-2FEG_r_Joint1}"
-TELEOP_GRIPPER_OPEN_VALUE="${LEROBOT_TELEOP_GRIPPER_OPEN_VALUE:-0.8}"
-TELEOP_GRIPPER_CLOSE_VALUE="${LEROBOT_TELEOP_GRIPPER_CLOSE_VALUE:-0}"
+TELEOP_HAND_STATE_TOPIC="${LEROBOT_TELEOP_HAND_STATE_TOPIC:-/hand_states}"
+TELEOP_HAND_STATE_LEFT_INDEX="${LEROBOT_TELEOP_HAND_STATE_LEFT_INDEX:-0}"
+TELEOP_HAND_STATE_RIGHT_INDEX="${LEROBOT_TELEOP_HAND_STATE_RIGHT_INDEX:-1}"
+TELEOP_HAND_STATE_OPEN_VALUE="${LEROBOT_TELEOP_HAND_STATE_OPEN_VALUE:-800}"
+TELEOP_HAND_STATE_CLOSE_VALUE="${LEROBOT_TELEOP_HAND_STATE_CLOSE_VALUE:-0}"
 TELEOP_REQUIRE_INITIAL_TARGET="${LEROBOT_TELEOP_REQUIRE_INITIAL_TARGET:-true}"
+ROBOT_NORMALIZE_GRIPPER_OBSERVATION="${LEROBOT_NORMALIZE_GRIPPER_OBSERVATION:-false}"
 
 # ---------- Resume logic ----------
 RESUME_INPUT="${LEROBOT_RESUME:-false}"
@@ -104,7 +105,8 @@ echo "  Episodes:   ${NUM_EPISODES}"
 echo "  FPS:        ${DATASET_FPS}"
 echo "  Cameras:    ${LEROBOT_CAMERA_COUNT}"
 echo "  VR topic:   ${TELEOP_TARGET_TOPIC}"
-echo "  Grippers:   ${TELEOP_GRIPPER_JOINT_STATE_TOPIC}"
+echo "  Hand state: ${TELEOP_HAND_STATE_TOPIC}"
+echo "  Grip obs:   normalized=${ROBOT_NORMALIZE_GRIPPER_OBSERVATION} (action is always 0=open,1=closed)"
 echo "  Push:       ${DATASET_PUSH}"
 echo "==============================="
 echo ""
@@ -114,6 +116,7 @@ exec lerobot-record \
   --robot.type=aibot2 \
   --robot.id=my_aibot2 \
   --robot.execute_actions=false \
+  --robot.normalize_gripper_observation="${ROBOT_NORMALIZE_GRIPPER_OBSERVATION}" \
   --teleop.discover_packages_path=lerobot_teleoperator_devices \
   --teleop.type=vr_aibot2 \
   --teleop.id="${TELEOP_ID}" \
@@ -121,11 +124,11 @@ exec lerobot-record \
   --teleop.message_type="${TELEOP_MESSAGE_TYPE}" \
   --teleop.left_pose_index="${TELEOP_LEFT_POSE_INDEX}" \
   --teleop.right_pose_index="${TELEOP_RIGHT_POSE_INDEX}" \
-  --teleop.gripper_joint_state_topic="${TELEOP_GRIPPER_JOINT_STATE_TOPIC}" \
-  --teleop.left_gripper_joint_name="${TELEOP_LEFT_GRIPPER_JOINT}" \
-  --teleop.right_gripper_joint_name="${TELEOP_RIGHT_GRIPPER_JOINT}" \
-  --teleop.gripper_open_value="${TELEOP_GRIPPER_OPEN_VALUE}" \
-  --teleop.gripper_close_value="${TELEOP_GRIPPER_CLOSE_VALUE}" \
+  --teleop.hand_state_topic="${TELEOP_HAND_STATE_TOPIC}" \
+  --teleop.hand_state_left_index="${TELEOP_HAND_STATE_LEFT_INDEX}" \
+  --teleop.hand_state_right_index="${TELEOP_HAND_STATE_RIGHT_INDEX}" \
+  --teleop.hand_state_open_value="${TELEOP_HAND_STATE_OPEN_VALUE}" \
+  --teleop.hand_state_close_value="${TELEOP_HAND_STATE_CLOSE_VALUE}" \
   --teleop.require_initial_target="${TELEOP_REQUIRE_INITIAL_TARGET}" \
   --dataset.root="${DATASET_ROOT}" \
   --dataset.repo_id="${DATASET_REPO_ID}" \

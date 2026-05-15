@@ -73,8 +73,8 @@ if [[ ! " ${SUPPORTED_POLICIES[*]} " =~ " ${POLICY_TYPE} " ]]; then
 fi
 
 TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
-DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_pick_object_from_table_v4}"
-MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_pick_object_from_table_v4_${POLICY_TYPE}_${TIMESTAMP}}"
+DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_pick_object_from_table_v6}"
+MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_pick_object_from_table_v6_${POLICY_TYPE}_${TIMESTAMP}}"
 OUTPUT_DIR="${LEROBOT_OUTPUT_DIR:-outputs/train/${MODEL_REPO_ID//\//_}}"
 JOB_NAME="${LEROBOT_JOB_NAME:-${MODEL_REPO_ID//\//_}}"
 BATCH_SIZE="${LEROBOT_BATCH_SIZE:-32}"

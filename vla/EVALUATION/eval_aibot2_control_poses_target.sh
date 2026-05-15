@@ -58,6 +58,7 @@ CONTROL_POSES_TARGET_TOPIC="${LEROBOT_CONTROL_POSES_TARGET_TOPIC:-/control_poses
 CONTROL_POSES_TARGET_FRAME_ID="${LEROBOT_CONTROL_POSES_TARGET_FRAME_ID:-base_link}"
 GRIPPER_OPEN_POSITION="${LEROBOT_GRIPPER_OPEN_POSITION:-0.8}"
 GRIPPER_CLOSE_POSITION="${LEROBOT_GRIPPER_CLOSE_POSITION:-0}"
+ROBOT_NORMALIZE_GRIPPER_OBSERVATION="${LEROBOT_NORMALIZE_GRIPPER_OBSERVATION:-false}"
 
 if [ "${RESET_TIME_S}" != "0" ]; then
     echo "LEROBOT_EVAL_RESET_TIME_S must be 0 for this no-teleop eval script." >&2
@@ -71,6 +72,7 @@ echo "  Policy:     ${POLICY_PATH}"
 echo "  Robot:      aibot2"
 echo "  Output:     ${CONTROL_POSES_TARGET_TOPIC} (PoseArray)"
 echo "  Frame:      ${CONTROL_POSES_TARGET_FRAME_ID}"
+echo "  Grip obs:   normalized=${ROBOT_NORMALIZE_GRIPPER_OBSERVATION} (action is always 0=open,1=closed)"
 echo "  Episodes:   ${NUM_EVAL_EPISODES}"
 echo "  FPS:        ${DATASET_FPS}"
 echo "==============================="
@@ -82,6 +84,7 @@ exec lerobot-record \
   --robot.id="${ROBOT_ID}" \
   --robot.execute_actions=true \
   --robot.action_output_mode=control_poses_target \
+  --robot.normalize_gripper_observation="${ROBOT_NORMALIZE_GRIPPER_OBSERVATION}" \
   --robot.control_poses_target_topic="${CONTROL_POSES_TARGET_TOPIC}" \
   --robot.control_poses_target_frame_id="${CONTROL_POSES_TARGET_FRAME_ID}" \
   --robot.left_gripper_open_position="${GRIPPER_OPEN_POSITION}" \
