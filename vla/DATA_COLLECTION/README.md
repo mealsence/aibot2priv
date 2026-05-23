@@ -213,11 +213,54 @@ huggingface-cli login
 ./push_dataset_to_hub.sh ~/lerobot_datasets/Real_Panda_CartesianVel_SpaceMouse_20260226-132513 ases200q2/Real_Panda_CartesianVel_SpaceMouse
 ```
 
+## AIBOT2 ROS Bag Recovery
+
+When you record AIBOT2 bags alongside LeRobot data, you can convert each ROS2
+bag directory into one LeRobot episode with the same feature schema as
+`Aibot2_pick_object_from_table_v6`.
+
+```bash
+cd ~/lerobot-ros-agent
+source .venv/bin/activate
+./vla/DATA_COLLECTION/convert_aibot2_rosbags.sh ~/aibot2/rosbags/2026-05-14 --dry-run
+./vla/DATA_COLLECTION/convert_aibot2_rosbags.sh ~/aibot2/rosbags/2026-05-14 --push-to-hub
+```
+
+Defaults:
+
+| Variable / Flag | Default |
+|-----------------|---------|
+| `--repo-id` | `ases200q2/Aibot2_pick_object_from_table_v6_rosbag` |
+| `--output-root` | `~/lerobot_datasets/Aibot2_pick_object_from_table_v6_rosbag` |
+| `--reference-dataset-root` | `~/lerobot_datasets/Aibot2_pick_object_from_table_v6` |
+| `--fps` | `25` |
+| no bag dir argument | today's `~/aibot2/rosbags/YYYY-MM-DD`, or newest dated folder if today is missing |
+
+Useful overrides:
+
+```bash
+# Convert only the first bag for testing
+./vla/DATA_COLLECTION/convert_aibot2_rosbags.sh ~/aibot2/rosbags/2026-05-14 --limit 1
+
+# Append to an existing local recovered dataset
+./vla/DATA_COLLECTION/convert_aibot2_rosbags.sh ~/aibot2/rosbags/2026-05-15 --resume
+
+# Upload to a different Hugging Face dataset repo
+./vla/DATA_COLLECTION/convert_aibot2_rosbags.sh ~/aibot2/rosbags/2026-05-14 \
+  --repo-id ases200q2/Aibot2_pick_object_from_table_v6_rosbag --push-to-hub
+```
+
+The converter writes `meta/rosbag_conversion.json` with per-bag frame counts and
+max/mean synchronization ages, which is useful for checking suspected lag. With
+`--resume`, bags already listed as converted in that report are skipped unless
+you pass `--reprocess`.
+
 ### Available scripts
 
 | Script | Purpose |
 |--------|---------|
 | `record_spacemouse_cartesian_vel_real.sh` | Record real robot data |
+| `convert_aibot2_rosbags.sh` | Convert AIBOT2 ROS2 bags to LeRobot datasets |
 | `push_dataset_to_hub.sh` | Push local dataset to Hugging Face Hub |
 
 ---

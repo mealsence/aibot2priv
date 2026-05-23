@@ -1,0 +1,58 @@
+# alpha = main dev machine (home PC). Start the project only there. Betas: solaris + workstation.
+# Starting on workstation makes alpha=workstation and the workstation session is self-sync; use git on workstation or keep sync running from home.
+sync:
+  aibot2-solaris:
+    alpha: "/home/cihan/lerobot-ros-agent-aibot2"
+    beta: "cihan@solaris:/home/cihan/lerobot-ros-agent-aibot2"
+    #mode: "one-way-replica"
+    mode: "two-way-safe"
+    ignore:
+      paths:
+        - ".git"
+        - ".cache/"
+        - "outputs/"
+        - ".venv"
+        - "__pycache__"
+        - "*.pyc"
+        - "*.pyo"
+        - "wandb/"
+        - "*.egg-info"
+        - ".eggs"
+        - "dist/"
+        - "build/"
+        - "install/"
+        - "log/"
+        - "*.bag"
+        - "*.bag.active"
+        - ".hf_lerobot/"
+        - "*.log"
+        - ".DS_Store"
+        - "mutagen.yml.lock"
+
+  aibot2-workstation:
+    alpha: "/home/cihan/lerobot-ros-agent-aibot2"
+    beta: "cihan@workstation:/home/cihan/lerobot-ros-agent-aibot2"
+    #mode: "one-way-replica"
+    mode: "two-way-safe"
+    ignore:
+      paths:
+        - ".git"
+        - ".cache/"
+        - "outputs/"
+        - ".venv"
+        - "__pycache__"
+        - "*.pyc"
+        - "*.pyo"
+        - "wandb/"
+        - "*.egg-info"
+        - ".eggs"
+        - "dist/"
+        - "build/"
+        - "install/"
+        - "log/"
+        - "*.bag"
+        - "*.bag.active"
+        - ".hf_lerobot/"
+        - "*.log"
+        - ".DS_Store"
+        - "mutagen.yml.lock"
