@@ -762,7 +762,7 @@ def parse_args() -> argparse.Namespace:
         help="Existing LeRobot dataset whose feature schema should be reused.",
     )
     parser.add_argument("--task", default=os.getenv("LEROBOT_SINGLE_TASK", DEFAULT_TASK))
-    parser.add_argument("--fps", type=int, default=int(os.getenv("LEROBOT_DATASET_FPS", "25")))
+    parser.add_argument("--fps", type=int, default=int(os.getenv("LEROBOT_DATASET_FPS", "15")))
     parser.add_argument("--width", type=int, default=int(os.getenv("LEROBOT_CAMERA_WIDTH", "0")) or None)
     parser.add_argument("--height", type=int, default=int(os.getenv("LEROBOT_CAMERA_HEIGHT", "0")) or None)
     parser.add_argument("--robot-type", default="aibot2")

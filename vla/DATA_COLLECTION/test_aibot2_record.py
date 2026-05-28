@@ -16,7 +16,7 @@ Env vars:
     LEROBOT_NUM_EPISODES     (default: 2)
     LEROBOT_EPISODE_SECONDS  (default: 10)
     LEROBOT_EPISODE_STEPS    (optional override; default: LEROBOT_EPISODE_SECONDS * LEROBOT_FPS)
-    LEROBOT_FPS              (default: 25)
+    LEROBOT_FPS              (default: 15)
     LEROBOT_PUSH             (default: false)
     LEROBOT_CAMERA_COUNT     (default: 4)
 """
@@ -137,7 +137,7 @@ def main():
         dataset_root = f"{dataset_root}_{suffix}"
         logger.warning("Dataset root already exists; writing to %s instead.", dataset_root)
     single_task = os.getenv("LEROBOT_SINGLE_TASK", "Pick object from table")
-    fps = int(os.getenv("LEROBOT_FPS", "25"))
+    fps = int(os.getenv("LEROBOT_FPS", "15"))
     num_episodes = int(os.getenv("LEROBOT_NUM_EPISODES", "2"))
     episode_seconds = float(os.getenv("LEROBOT_EPISODE_SECONDS", "10"))
     episode_steps = int(os.getenv("LEROBOT_EPISODE_STEPS", str(max(1, int(round(episode_seconds * fps))))))

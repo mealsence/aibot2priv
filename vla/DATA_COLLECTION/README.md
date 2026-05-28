@@ -233,7 +233,7 @@ Defaults:
 | `--repo-id` | `ases200q2/Aibot2_pick_object_from_table_v6_rosbag` |
 | `--output-root` | `~/lerobot_datasets/Aibot2_pick_object_from_table_v6_rosbag` |
 | `--reference-dataset-root` | `~/lerobot_datasets/Aibot2_pick_object_from_table_v6` |
-| `--fps` | `25` |
+| `--fps` | `15` |
 | no bag dir argument | today's `~/aibot2/rosbags/YYYY-MM-DD`, or newest dated folder if today is missing |
 
 Useful overrides:

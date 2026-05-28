@@ -73,8 +73,8 @@ if [[ ! " ${SUPPORTED_POLICIES[*]} " =~ " ${POLICY_TYPE} " ]]; then
 fi
 
 TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
-DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_15fps}"
-MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_combined_pick_object_datasets_15fps_${POLICY_TYPE}_${TIMESTAMP}}"
+DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_updatad_2026_05_25_15fps}"
+MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_combined_pick_object_datasets_updatad_2026_05_25_15fps_${POLICY_TYPE}_${TIMESTAMP}}"
 OUTPUT_DIR="${LEROBOT_OUTPUT_DIR:-outputs/train/${MODEL_REPO_ID//\//_}}"
 JOB_NAME="${LEROBOT_JOB_NAME:-${MODEL_REPO_ID//\//_}}"
 BATCH_SIZE="${LEROBOT_BATCH_SIZE:-32}"
@@ -153,6 +153,7 @@ echo "  Output dir: ${OUTPUT_DIR}"
 echo "  Device:     ${DEVICE}"
 echo "  Batch size: ${BATCH_SIZE}"
 echo "  Steps:      ${STEPS}"
+echo "  Dataset FPS: from dataset meta (AIBOT2 default: 15)"
 echo "======================="
 echo ""
 

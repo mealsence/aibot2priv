@@ -17,7 +17,7 @@ def _get_aibot2_camera_config() -> dict[str, CameraConfig]:
 
         camera_width = int(os.getenv("LEROBOT_CAMERA_WIDTH", "320"))
         camera_height = int(os.getenv("LEROBOT_CAMERA_HEIGHT", "240"))
-        camera_fps = int(os.getenv("LEROBOT_CAMERA_FPS", "25"))
+        camera_fps = int(os.getenv("LEROBOT_CAMERA_FPS", "15"))
 
         default_cameras = {
             "camera_front": "/camera/camera_front/color/image_raw/compressed",
