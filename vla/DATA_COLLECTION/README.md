@@ -219,6 +219,10 @@ When you record AIBOT2 bags alongside LeRobot data, you can convert each ROS2
 bag directory into one LeRobot episode with the same feature schema as
 `Aibot2_pick_object_from_table_v6`.
 
+For the **398-bag combined pick-object set at 15 FPS** (rosbag folder, `REF` vs
+`--fps`, convert + Hub push), see
+[README_Aibot2_combined_15fps.md](./README_Aibot2_combined_15fps.md).
+
 ```bash
 cd ~/lerobot-ros-agent
 source .venv/bin/activate

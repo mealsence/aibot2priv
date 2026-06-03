@@ -30,10 +30,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-VLA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-OUTPUT_ROOT="${VLA_ROOT}/outputs"
+OUTPUT_ROOT="${PROJECT_ROOT}/outputs"
 
-DATASET_REPO_ID="${DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_updatad_2026_05_25_15fps}"
+DATASET_REPO_ID="${DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_updatad_2026_05_28_15fps}"
 DATASET_NAME="${DATASET_REPO_ID##*/}"
 HF_USER="${HF_USER:-ases200q2}"
 TIMESTAMP="$(date +%Y%m%d_%H%M)"
@@ -95,7 +94,7 @@ ensure_pi05_transformers() {
 
 ensure_pi05_transformers
 
-cd "${VLA_ROOT}"
+cd "${PROJECT_ROOT}"
 
 lerobot-train \
   --policy.type=pi05 \

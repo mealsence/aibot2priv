@@ -11,7 +11,25 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 VLA_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-cd "${VLA_ROOT}"
+cd "${PROJECT_ROOT}"
+
+# Prefer repo-root outputs/; fall back to legacy vla/outputs/ for existing checkpoints.
+resolve_repo_path() {
+    local path="$1"
+    if [[ -z "${path}" || "${path}" = /* ]]; then
+        echo "${path}"
+        return
+    fi
+    if [[ -e "${path}" ]]; then
+        echo "${path}"
+        return
+    fi
+    if [[ -e "vla/${path}" ]]; then
+        echo "vla/${path}"
+        return
+    fi
+    echo "${path}"
+}
 
 activate_python_env() {
     if [ -n "${CONDA_PREFIX:-}" ]; then
@@ -73,8 +91,8 @@ if [[ ! " ${SUPPORTED_POLICIES[*]} " =~ " ${POLICY_TYPE} " ]]; then
 fi
 
 TIMESTAMP="$(date +"%Y%m%d_%H%M%S")"
-DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_updatad_2026_05_25_15fps}"
-MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_combined_pick_object_datasets_updatad_2026_05_25_15fps_${POLICY_TYPE}_${TIMESTAMP}}"
+DATASET_REPO_ID="${LEROBOT_DATASET_REPO_ID:-ases200q2/Aibot2_combined_pick_object_datasets_updatad_2026_05_28_15fps}"
+MODEL_REPO_ID="${LEROBOT_MODEL_REPO_ID:-${HF_USER:-ases200q2}/Aibot2_combined_pick_object_datasets_updatad_2026_05_28_15fps_${POLICY_TYPE}_${TIMESTAMP}}"
 OUTPUT_DIR="${LEROBOT_OUTPUT_DIR:-outputs/train/${MODEL_REPO_ID//\//_}}"
 JOB_NAME="${LEROBOT_JOB_NAME:-${MODEL_REPO_ID//\//_}}"
 BATCH_SIZE="${LEROBOT_BATCH_SIZE:-32}"
@@ -157,4 +175,14 @@ echo "  Dataset FPS: from dataset meta (AIBOT2 default: 15)"
 echo "======================="
 echo ""
 
-"${TRAIN_CMD[@]}" "${@:2}"
+EXTRA_ARGS=()
+for arg in "${@:2}"; do
+    if [[ "${arg}" == --policy.pretrained_path=* ]]; then
+        pretrained_path="$(resolve_repo_path "${arg#--policy.pretrained_path=}")"
+        EXTRA_ARGS+=(--policy.pretrained_path="${pretrained_path}")
+    else
+        EXTRA_ARGS+=("${arg}")
+    fi
+done
+
+"${TRAIN_CMD[@]}" "${EXTRA_ARGS[@]}"
