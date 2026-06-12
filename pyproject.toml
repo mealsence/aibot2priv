@@ -89,7 +89,8 @@ dependencies = [
     "setuptools>=71.0.0,<81.0.0",
     "cmake>=3.29.0.1,<4.2.0",
     # LeRobot RobotKinematics (e.g. ui/gradio_agent/robot_tools.py); keep numpy<2.0 above
-    "placo>=0.9.6,<0.10.0",
+    # `placo` moved to optional dependencies because some placo versions require numpy>=2.x
+    # which conflicts with ROS2 cv_bridge requirements (numpy<2.0).
 ]
 
 # =============================================================================
@@ -119,6 +120,10 @@ smolvla = [
 
 pi = [
     "transformers @ git+https://github.com/huggingface/transformers.git@fix/lerobot_openpi",
+]
+
+placo = [
+    "placo>=0.9.6,<0.10.0",
 ]
 
 # Async inference

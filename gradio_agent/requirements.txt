@@ -1,0 +1,26 @@
+gradio>=4.44.0
+numpy>=1.26.0,<2.0.0
+pydub>=0.25.1
+soundfile>=0.12.1
+scipy>=1.11.0
+
+# Needed for TTS and audio processing in demo.py
+gTTS>=2.5.0
+librosa>=0.11.0
+
+# LLM/Transcription clients used by demo.py
+openai>=1.0.0
+google-genai>=1.29.0
+
+# ROS and visualization dependencies
+transforms3d>=0.4.2
+matplotlib>=3.10.0
+opencv-python>=4.12.0
+
+# ROS2 dependencies for gripper and arm control
+rclpy>=0.1.0
+control_msgs>=4.0.0
+trajectory_msgs>=4.0.0
+sensor_msgs>=4.0.0
+
+mbodied

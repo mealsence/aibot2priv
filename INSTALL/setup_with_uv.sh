@@ -132,16 +132,34 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}Step 1: Checking prerequisites${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
-# Check Python version
-PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
-PYTHON_MAJOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f1)
-PYTHON_MINOR=$(echo "$PYTHON_VERSION" | cut -d'.' -f2)
+# Check Python version and select a supported interpreter
+SYSTEM_PYTHON_VERSION="unknown"
+if command -v python3 &> /dev/null; then
+    SYSTEM_PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
+fi
 
-if [[ "$PYTHON_MAJOR" -lt 3 ]] || [[ "$PYTHON_MAJOR" -eq 3 && "$PYTHON_MINOR" -lt 10 ]]; then
-    echo -e "${RED}❌ Python 3.10+ required, found: $PYTHON_VERSION${NC}"
+PYTHON_BIN=""
+for candidate in python3.10 python3.11 python3; do
+    if command -v "$candidate" &> /dev/null; then
+        candidate_version=$("$candidate" --version 2>&1 | cut -d' ' -f2)
+        candidate_major=$(echo "$candidate_version" | cut -d'.' -f1)
+        candidate_minor=$(echo "$candidate_version" | cut -d'.' -f2)
+        if [[ "$candidate_major" -eq 3 ]] && ([[ "$candidate_minor" -eq 10 ]] || [[ "$candidate_minor" -eq 11 ]]); then
+            PYTHON_BIN="$candidate"
+            PYTHON_VERSION="$candidate_version"
+            break
+        fi
+    fi
+done
+
+if [[ -z "$PYTHON_BIN" ]]; then
+    echo -e "${RED}❌ Python 3.10 or 3.11 is required."
+    echo -e "${YELLOW}   Detected system python3: $SYSTEM_PYTHON_VERSION${NC}"
+    echo -e "${YELLOW}   Install python3.10 or python3.11 and retry.${NC}"
     exit 1
 fi
-echo -e "${GREEN}✅ Python version: $PYTHON_VERSION${NC}"
+
+echo -e "${GREEN}✅ Using Python interpreter: $PYTHON_BIN ($PYTHON_VERSION)${NC}"
 
 # Check for NVIDIA GPU (optional)
 if command -v nvidia-smi &> /dev/null; then
@@ -212,7 +230,7 @@ fi
 
 if [[ ! -d "$VENV_NAME" ]]; then
     echo -e "${BLUE}📦 Creating virtual environment with Python $PYTHON_VERSION...${NC}"
-    uv venv "$VENV_NAME" --python python3
+    uv venv "$VENV_NAME" --python "$PYTHON_BIN"
 fi
 
 # Activate virtual environment
@@ -230,13 +248,24 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 if [[ "$INSTALL_TORCH" == true ]]; then
     if [[ "$CUDA_VERSION" == "cpu" ]]; then
         echo -e "${BLUE}📦 Installing PyTorch (CPU)...${NC}"
-        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+        uv pip install torch torchvision torchaudio \
+            --index-strategy unsafe-best-match \
+            --index-url https://pypi.org/simple \
+            --extra-index-url https://download.pytorch.org/whl/cpu
     elif [[ "$CUDA_VERSION" == "cu124" ]]; then
         echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.4...${NC}"
-        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+        uv pip install torch torchvision torchaudio \
+            --index-strategy unsafe-best-match \
+            --index-url https://pypi.org/simple \
+            --extra-index-url https://download.pytorch.org/whl/cu124 \
+            --extra-index-url https://pypi.nvidia.com
     else
         echo -e "${BLUE}📦 Installing PyTorch with CUDA 12.8...${NC}"
-        uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+        uv pip install torch torchvision torchaudio \
+            --index-strategy unsafe-best-match \
+            --index-url https://pypi.org/simple \
+            --extra-index-url https://download.pytorch.org/whl/cu128 \
+            --extra-index-url https://pypi.nvidia.com
     fi
 
     # Verify PyTorch installation
@@ -246,9 +275,9 @@ if [[ "$INSTALL_TORCH" == true ]]; then
 else
     echo -e "${YELLOW}⏭️  Skipping PyTorch install (default behavior)${NC}"
     echo -e "${BLUE}Install manually based on your GPU/driver:${NC}"
-    echo "  CUDA 12.8: uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128"
-    echo "  CUDA 12.4: uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124"
-    echo "  CPU only : uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu"
+    echo "  CUDA 12.8: uv pip install torch torchvision torchaudio --index-strategy unsafe-best-match --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.nvidia.com"
+    echo "  CUDA 12.4: uv pip install torch torchvision torchaudio --index-strategy unsafe-best-match --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.nvidia.com"
+    echo "  CPU only : uv pip install torch torchvision torchaudio --index-strategy unsafe-best-match --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu"
     echo -e "${BLUE}Tip: re-run this script with --cuda128, --cuda124, or --cpu for automatic install.${NC}"
 fi
 echo ""
@@ -260,13 +289,22 @@ echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━�
 echo -e "${YELLOW}Step 5: Installing project dependencies${NC}"
 echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
+PROJECT_INDEX_ARGS="--index-strategy unsafe-best-match --index-url https://pypi.org/simple"
+if [[ "$CUDA_VERSION" == "cpu" ]]; then
+    PROJECT_INDEX_ARGS="$PROJECT_INDEX_ARGS --extra-index-url https://download.pytorch.org/whl/cpu"
+elif [[ "$CUDA_VERSION" == "cu124" ]]; then
+    PROJECT_INDEX_ARGS="$PROJECT_INDEX_ARGS --extra-index-url https://download.pytorch.org/whl/cu124 --extra-index-url https://pypi.nvidia.com"
+else
+    PROJECT_INDEX_ARGS="$PROJECT_INDEX_ARGS --extra-index-url https://download.pytorch.org/whl/cu128 --extra-index-url https://pypi.nvidia.com"
+fi
+
 # Install main project
 if [[ "$INCLUDE_DEV" == true ]]; then
     echo -e "${BLUE}📦 Installing project with dev dependencies...${NC}"
-    uv pip install --index-strategy unsafe-best-match -e ".[dev]"
+    uv pip install $PROJECT_INDEX_ARGS -e ".[dev]"
 else
     echo -e "${BLUE}📦 Installing project dependencies...${NC}"
-    uv pip install --index-strategy unsafe-best-match -e .
+    uv pip install $PROJECT_INDEX_ARGS -e .
 fi
 
 echo -e "${GREEN}✅ Project dependencies installed${NC}"

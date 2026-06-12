@@ -24,7 +24,7 @@ if [[ -f "$SCRIPT_DIR/.venv/bin/activate" ]]; then
     source "$SCRIPT_DIR/.venv/bin/activate"
     echo "✅ Python virtual environment activated"
 else
-    echo "⚠️  Virtual environment not found. Run INSTALL/setup_with_uv.sh first."
+    echo "⚠️  Virtual environment not found. Run misc/INSTALL/setup_with_uv.sh first."
 fi
 
 echo ""

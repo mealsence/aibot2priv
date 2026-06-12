@@ -68,18 +68,29 @@ git clone --recursive https://github.com/your-username/lerobot-ros-agent.git
 cd lerobot-ros-agent
 
 # 3. Create virtual environment
-uv venv .venv --python python3.10
+uv venv .venv --python python3.10  # or python3.11 if you have it installed
 
 # 4. Activate environment
 source .venv/bin/activate
 
 # 5. Install PyTorch (optional; choose one)
-uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-# uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-# uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+uv pip install torch torchvision torchaudio \
+  --index-strategy unsafe-best-match \
+  --index-url https://pypi.org/simple \
+  --extra-index-url https://download.pytorch.org/whl/cu128 \
+  --extra-index-url https://pypi.nvidia.com
+# uv pip install torch torchvision torchaudio \
+#   --index-strategy unsafe-best-match \
+#   --index-url https://pypi.org/simple \
+#   --extra-index-url https://download.pytorch.org/whl/cu124 \
+#   --extra-index-url https://pypi.nvidia.com
+# uv pip install torch torchvision torchaudio \
+#   --index-strategy unsafe-best-match \
+#   --index-url https://pypi.org/simple \
+#   --extra-index-url https://download.pytorch.org/whl/cpu
 
 # 6. Install project dependencies
-uv pip install -e .
+uv pip install --index-strategy unsafe-best-match --index-url https://pypi.org/simple -e .
 
 # 7. Install local packages
 uv pip install -e ./lerobot --no-deps
